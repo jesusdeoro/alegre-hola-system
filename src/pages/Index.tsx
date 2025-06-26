@@ -1,14 +1,16 @@
-
 import { useState, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import { Users, Calendar, BarChart3, Clock, Bell, Cake } from "lucide-react";
+import { Users, Calendar, BarChart3, Clock, Bell, Cake, UserX, Edit, Trash2 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 
 const Index = () => {
   const [activeSection, setActiveSection] = useState("inicio");
   const [employees, setEmployees] = useState([]);
+  const [formerEmployees, setFormerEmployees] = useState([]);
   const [alerts, setAlerts] = useState({
     birthdays: [],
     contracts: []
@@ -38,6 +40,15 @@ const Index = () => {
       contracts: contractAlerts
     });
 
+    // Simulación de empleados activos
+    const mockEmployees = [
+      { id: 1, nombre: "Juan Pérez", cedula: "12345678", cargo: "Desarrollador", departamento: "IT", telefono: "3001234567" },
+      { id: 2, nombre: "María García", cedula: "87654321", cargo: "Diseñadora", departamento: "Marketing", telefono: "3007654321" },
+      { id: 3, nombre: "Carlos López", cedula: "11223344", cargo: "Contador", departamento: "Finanzas", telefono: "3009876543" }
+    ];
+    
+    setEmployees(mockEmployees);
+
     // Mostrar toast de bienvenida
     toast({
       title: "¡Bienvenido al Sistema de Gestión Humana!",
@@ -62,6 +73,22 @@ const Index = () => {
 
   if (activeSection === "empleados") {
     return <AddEmployee onBack={() => setActiveSection("inicio")} />;
+  }
+
+  if (activeSection === "matriz") {
+    return <EmployeeMatrix 
+      employees={employees} 
+      setEmployees={setEmployees}
+      setFormerEmployees={setFormerEmployees}
+      onBack={() => setActiveSection("inicio")} 
+    />;
+  }
+
+  if (activeSection === "ex-empleados") {
+    return <FormerEmployees 
+      formerEmployees={formerEmployees}
+      onBack={() => setActiveSection("inicio")} 
+    />;
   }
 
   if (activeSection === "indicadores") {
@@ -117,12 +144,26 @@ const Index = () => {
         </div>
 
         {/* Menu Principal */}
-        <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-6">
+        <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
           <MenuButton
             icon={Users}
             title="Agregar Empleados"
             section="empleados"
             description="Registra nuevos empleados con toda su información personal y contractual"
+          />
+          
+          <MenuButton
+            icon={Users}
+            title="Matriz de Empleados"
+            section="matriz"
+            description="Gestiona, edita y administra todos los empleados activos"
+          />
+
+          <MenuButton
+            icon={UserX}
+            title="Ex-Empleados"
+            section="ex-empleados"
+            description="Consulta empleados que ya no trabajan en la compañía"
           />
           
           <MenuButton
@@ -151,7 +192,7 @@ const Index = () => {
         <div className="grid md:grid-cols-4 gap-4 mt-8">
           <Card>
             <CardContent className="p-6 text-center">
-              <div className="text-2xl font-bold text-blue-600">124</div>
+              <div className="text-2xl font-bold text-blue-600">{employees.length}</div>
               <div className="text-sm text-gray-600">Empleados Activos</div>
             </CardContent>
           </Card>
@@ -177,6 +218,179 @@ const Index = () => {
             </CardContent>
           </Card>
         </div>
+      </div>
+    </div>
+  );
+};
+
+// Componente para matriz de empleados
+const EmployeeMatrix = ({ employees, setEmployees, setFormerEmployees, onBack }) => {
+  const { toast } = useToast();
+
+  const handleEdit = (employeeId) => {
+    toast({
+      title: "Función en desarrollo",
+      description: "La edición de empleados estará disponible pronto",
+    });
+  };
+
+  const handleDelete = (employeeId) => {
+    const employeeToRemove = employees.find(emp => emp.id === employeeId);
+    
+    if (employeeToRemove) {
+      // Mover a ex-empleados
+      const formerEmployee = {
+        ...employeeToRemove,
+        fechaRetiro: new Date().toLocaleDateString(),
+        motivoRetiro: "Desvinculación"
+      };
+      
+      setFormerEmployees(prev => [...prev, formerEmployee]);
+      
+      // Remover de empleados activos
+      setEmployees(prev => prev.filter(emp => emp.id !== employeeId));
+      
+      toast({
+        title: "Empleado desvinculado",
+        description: `${employeeToRemove.nombre} ha sido movido a ex-empleados`,
+      });
+    }
+  };
+
+  return (
+    <div className="min-h-screen bg-gray-50 p-6">
+      <div className="max-w-6xl mx-auto">
+        <div className="flex items-center mb-6">
+          <Button variant="outline" onClick={onBack} className="mr-4">
+            ← Volver
+          </Button>
+          <h1 className="text-3xl font-bold text-gray-800">Matriz de Empleados</h1>
+        </div>
+
+        <Card>
+          <CardHeader>
+            <CardTitle>Empleados Activos ({employees.length})</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Nombre</TableHead>
+                  <TableHead>Cédula</TableHead>
+                  <TableHead>Cargo</TableHead>
+                  <TableHead>Departamento</TableHead>
+                  <TableHead>Teléfono</TableHead>
+                  <TableHead>Acciones</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {employees.map((employee) => (
+                  <TableRow key={employee.id}>
+                    <TableCell className="font-medium">{employee.nombre}</TableCell>
+                    <TableCell>{employee.cedula}</TableCell>
+                    <TableCell>{employee.cargo}</TableCell>
+                    <TableCell>{employee.departamento}</TableCell>
+                    <TableCell>{employee.telefono}</TableCell>
+                    <TableCell>
+                      <div className="flex gap-2">
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => handleEdit(employee.id)}
+                        >
+                          <Edit className="h-4 w-4" />
+                        </Button>
+                        <Dialog>
+                          <DialogTrigger asChild>
+                            <Button variant="destructive" size="sm">
+                              <Trash2 className="h-4 w-4" />
+                            </Button>
+                          </DialogTrigger>
+                          <DialogContent>
+                            <DialogHeader>
+                              <DialogTitle>Confirmar Desvinculación</DialogTitle>
+                            </DialogHeader>
+                            <p>¿Estás seguro de que deseas desvincular a {employee.nombre}?</p>
+                            <div className="flex gap-2 mt-4">
+                              <Button
+                                variant="destructive"
+                                onClick={() => handleDelete(employee.id)}
+                              >
+                                Confirmar
+                              </Button>
+                              <DialogTrigger asChild>
+                                <Button variant="outline">Cancelar</Button>
+                              </DialogTrigger>
+                            </div>
+                          </DialogContent>
+                        </Dialog>
+                      </div>
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </CardContent>
+        </Card>
+      </div>
+    </div>
+  );
+};
+
+// Componente para ex-empleados
+const FormerEmployees = ({ formerEmployees, onBack }) => {
+  return (
+    <div className="min-h-screen bg-gray-50 p-6">
+      <div className="max-w-6xl mx-auto">
+        <div className="flex items-center mb-6">
+          <Button variant="outline" onClick={onBack} className="mr-4">
+            ← Volver
+          </Button>
+          <h1 className="text-3xl font-bold text-gray-800">Ex-Empleados</h1>
+        </div>
+
+        <Card>
+          <CardHeader>
+            <CardTitle>Empleados que ya no trabajan en la compañía ({formerEmployees.length})</CardTitle>
+          </CardHeader>
+          <CardContent>
+            {formerEmployees.length === 0 ? (
+              <div className="text-center py-8 text-gray-500">
+                <UserX className="h-12 w-12 mx-auto mb-4 opacity-50" />
+                <p>No hay ex-empleados registrados</p>
+              </div>
+            ) : (
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Nombre</TableHead>
+                    <TableHead>Cédula</TableHead>
+                    <TableHead>Cargo</TableHead>
+                    <TableHead>Departamento</TableHead>
+                    <TableHead>Fecha de Retiro</TableHead>
+                    <TableHead>Motivo</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {formerEmployees.map((employee) => (
+                    <TableRow key={employee.id}>
+                      <TableCell className="font-medium">{employee.nombre}</TableCell>
+                      <TableCell>{employee.cedula}</TableCell>
+                      <TableCell>{employee.cargo}</TableCell>
+                      <TableCell>{employee.departamento}</TableCell>
+                      <TableCell>{employee.fechaRetiro}</TableCell>
+                      <TableCell>
+                        <span className="px-2 py-1 bg-red-100 text-red-800 rounded-full text-xs">
+                          {employee.motivoRetiro}
+                        </span>
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            )}
+          </CardContent>
+        </Card>
       </div>
     </div>
   );
@@ -759,13 +973,13 @@ const Indicators = ({ onBack }) => {
               </div>
               <div className="text-center">
                 <div className="text-2xl font-bold text-blue-600">
-                  ${(indicators.avgSalary * 0.8).toLocaleString()}
+                  ${Math.round(indicators.avgSalary * 0.8).toLocaleString()}
                 </div>
                 <div className="text-sm text-gray-600">Salario Mínimo</div>
               </div>
               <div className="text-center">
                 <div className="text-2xl font-bold text-purple-600">
-                  ${(indicators.avgSalary * 1.5).toLocaleString()}
+                  ${Math.round(indicators.avgSalary * 1.5).toLocaleString()}
                 </div>
                 <div className="text-sm text-gray-600">Salario Máximo</div>
               </div>
