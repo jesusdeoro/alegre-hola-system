@@ -1,8 +1,9 @@
+
 import { useState, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import { Users, Calendar, BarChart3, Clock, Bell, Cake, UserX, Edit, Trash2 } from "lucide-react";
+import { Users, Calendar, BarChart3, Clock, Bell, Cake, UserX, Edit, Trash2, FileText, Plus } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
@@ -11,50 +12,86 @@ const Index = () => {
   const [activeSection, setActiveSection] = useState("inicio");
   const [employees, setEmployees] = useState([]);
   const [formerEmployees, setFormerEmployees] = useState([]);
+  const [incapacidades, setIncapacidades] = useState([]);
   const [alerts, setAlerts] = useState({
     birthdays: [],
     contracts: []
   });
   const { toast } = useToast();
 
-  // Simulación de datos para las alertas
+  // Cargar datos del localStorage al iniciar
   useEffect(() => {
+    const savedEmployees = localStorage.getItem('employees');
+    const savedFormerEmployees = localStorage.getItem('formerEmployees');
+    const savedIncapacidades = localStorage.getItem('incapacidades');
+    
+    if (savedEmployees) {
+      setEmployees(JSON.parse(savedEmployees));
+    }
+    if (savedFormerEmployees) {
+      setFormerEmployees(JSON.parse(savedFormerEmployees));
+    }
+    if (savedIncapacidades) {
+      setIncapacidades(JSON.parse(savedIncapacidades));
+    }
+  }, []);
+
+  // Guardar empleados en localStorage cuando cambien
+  useEffect(() => {
+    localStorage.setItem('employees', JSON.stringify(employees));
+    
+    // Calcular alertas basadas en datos reales
     const currentDate = new Date();
     const currentMonth = currentDate.getMonth();
-    const twoMonthsLater = new Date(currentDate.getFullYear(), currentDate.getMonth() + 2, 1);
+    const currentYear = currentDate.getFullYear();
     
-    // Simulación de cumpleaños del mes
-    const birthdayAlerts = [
-      { name: "Juan Pérez", date: "15 de este mes" },
-      { name: "María García", date: "22 de este mes" }
-    ];
+    // Alertas de cumpleaños del mes actual
+    const birthdayAlerts = employees.filter(emp => {
+      if (emp.fechaNacimiento) {
+        const birthDate = new Date(emp.fechaNacimiento);
+        return birthDate.getMonth() === currentMonth;
+      }
+      return false;
+    }).map(emp => ({
+      name: emp.nombre,
+      date: new Date(emp.fechaNacimiento).getDate() + " de este mes"
+    }));
 
-    // Simulación de contratos por vencer
-    const contractAlerts = [
-      { name: "Carlos López", endDate: "2024-08-15", daysLeft: 45 },
-      { name: "Ana Martínez", endDate: "2024-09-01", daysLeft: 62 }
-    ];
+    // Alertas de contratos por vencer en los próximos 2 meses
+    const twoMonthsFromNow = new Date();
+    twoMonthsFromNow.setMonth(currentDate.getMonth() + 2);
+    
+    const contractAlerts = employees.filter(emp => {
+      if (emp.fechaFinalContrato) {
+        const endDate = new Date(emp.fechaFinalContrato);
+        return endDate <= twoMonthsFromNow && endDate >= currentDate;
+      }
+      return false;
+    }).map(emp => {
+      const endDate = new Date(emp.fechaFinalContrato);
+      const daysLeft = Math.ceil((endDate - currentDate) / (1000 * 60 * 60 * 24));
+      return {
+        name: emp.nombre,
+        endDate: emp.fechaFinalContrato,
+        daysLeft: daysLeft
+      };
+    });
 
     setAlerts({
       birthdays: birthdayAlerts,
       contracts: contractAlerts
     });
+  }, [employees]);
 
-    // Simulación de empleados activos
-    const mockEmployees = [
-      { id: 1, nombre: "Juan Pérez", cedula: "12345678", cargo: "Desarrollador", departamento: "IT", telefono: "3001234567" },
-      { id: 2, nombre: "María García", cedula: "87654321", cargo: "Diseñadora", departamento: "Marketing", telefono: "3007654321" },
-      { id: 3, nombre: "Carlos López", cedula: "11223344", cargo: "Contador", departamento: "Finanzas", telefono: "3009876543" }
-    ];
-    
-    setEmployees(mockEmployees);
+  // Guardar ex-empleados en localStorage cuando cambien
+  useEffect(() => {
+    localStorage.setItem('formerEmployees', JSON.stringify(formerEmployees));
+  }, [formerEmployees]);
 
-    // Mostrar toast de bienvenida
-    toast({
-      title: "¡Bienvenido al Sistema de Gestión Humana!",
-      description: "Revisa las alertas importantes del mes",
-    });
-  }, [toast]);
+  // Guardar incapacidades en localStorage cuando cambien
+  useEffect(() => {
+    localStorage.setItem('incapacidades', JSON.stringify(incapacidades));
+  }, [incapacidades]);
 
   const MenuButton = ({ icon: Icon, title, section, description }) => (
     <Card 
@@ -72,7 +109,11 @@ const Index = () => {
   );
 
   if (activeSection === "empleados") {
-    return <AddEmployee onBack={() => setActiveSection("inicio")} />;
+    return <AddEmployee 
+      employees={employees}
+      setEmployees={setEmployees}
+      onBack={() => setActiveSection("inicio")} 
+    />;
   }
 
   if (activeSection === "matriz") {
@@ -91,8 +132,21 @@ const Index = () => {
     />;
   }
 
+  if (activeSection === "incapacidades") {
+    return <Incapacidades 
+      incapacidades={incapacidades}
+      setIncapacidades={setIncapacidades}
+      employees={employees}
+      onBack={() => setActiveSection("inicio")} 
+    />;
+  }
+
   if (activeSection === "indicadores") {
-    return <Indicators onBack={() => setActiveSection("inicio")} />;
+    return <Indicators 
+      employees={employees}
+      incapacidades={incapacidades}
+      onBack={() => setActiveSection("inicio")} 
+    />;
   }
 
   if (activeSection === "huellero") {
@@ -165,6 +219,13 @@ const Index = () => {
             section="ex-empleados"
             description="Consulta empleados que ya no trabajan en la compañía"
           />
+
+          <MenuButton
+            icon={FileText}
+            title="Incapacidades"
+            section="incapacidades"
+            description="Gestiona y registra las incapacidades de los empleados"
+          />
           
           <MenuButton
             icon={BarChart3}
@@ -178,13 +239,6 @@ const Index = () => {
             title="Control de Huellero"
             section="huellero"
             description="Gestiona el control de asistencia y llegadas tardías"
-          />
-          
-          <MenuButton
-            icon={Calendar}
-            title="Reportes"
-            section="reportes"
-            description="Genera reportes detallados de empleados y asistencia"
           />
         </div>
 
@@ -206,15 +260,15 @@ const Index = () => {
           
           <Card>
             <CardContent className="p-6 text-center">
-              <div className="text-2xl font-bold text-yellow-600">8</div>
+              <div className="text-2xl font-bold text-yellow-600">{alerts.contracts.length}</div>
               <div className="text-sm text-gray-600">Contratos por Vencer</div>
             </CardContent>
           </Card>
           
           <Card>
             <CardContent className="p-6 text-center">
-              <div className="text-2xl font-bold text-purple-600">12</div>
-              <div className="text-sm text-gray-600">Cumpleaños del Mes</div>
+              <div className="text-2xl font-bold text-red-600">{incapacidades.length}</div>
+              <div className="text-sm text-gray-600">Incapacidades Activas</div>
             </CardContent>
           </Card>
         </div>
@@ -227,10 +281,11 @@ const Index = () => {
 const EmployeeMatrix = ({ employees, setEmployees, setFormerEmployees, onBack }) => {
   const { toast } = useToast();
 
-  const handleEdit = (employeeId) => {
+  const handleEdit = (employee) => {
+    // Aquí puedes implementar la edición inline o abrir un modal
     toast({
-      title: "Función en desarrollo",
-      description: "La edición de empleados estará disponible pronto",
+      title: "Editar empleado",
+      description: "Función de edición en desarrollo",
     });
   };
 
@@ -241,7 +296,7 @@ const EmployeeMatrix = ({ employees, setEmployees, setFormerEmployees, onBack })
       // Mover a ex-empleados
       const formerEmployee = {
         ...employeeToRemove,
-        fechaRetiro: new Date().toLocaleDateString(),
+        fechaRetiro: new Date().toISOString().split('T')[0],
         motivoRetiro: "Desvinculación"
       };
       
@@ -272,64 +327,71 @@ const EmployeeMatrix = ({ employees, setEmployees, setFormerEmployees, onBack })
             <CardTitle>Empleados Activos ({employees.length})</CardTitle>
           </CardHeader>
           <CardContent>
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Nombre</TableHead>
-                  <TableHead>Cédula</TableHead>
-                  <TableHead>Cargo</TableHead>
-                  <TableHead>Departamento</TableHead>
-                  <TableHead>Teléfono</TableHead>
-                  <TableHead>Acciones</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {employees.map((employee) => (
-                  <TableRow key={employee.id}>
-                    <TableCell className="font-medium">{employee.nombre}</TableCell>
-                    <TableCell>{employee.cedula}</TableCell>
-                    <TableCell>{employee.cargo}</TableCell>
-                    <TableCell>{employee.departamento}</TableCell>
-                    <TableCell>{employee.telefono}</TableCell>
-                    <TableCell>
-                      <div className="flex gap-2">
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={() => handleEdit(employee.id)}
-                        >
-                          <Edit className="h-4 w-4" />
-                        </Button>
-                        <Dialog>
-                          <DialogTrigger asChild>
-                            <Button variant="destructive" size="sm">
-                              <Trash2 className="h-4 w-4" />
-                            </Button>
-                          </DialogTrigger>
-                          <DialogContent>
-                            <DialogHeader>
-                              <DialogTitle>Confirmar Desvinculación</DialogTitle>
-                            </DialogHeader>
-                            <p>¿Estás seguro de que deseas desvincular a {employee.nombre}?</p>
-                            <div className="flex gap-2 mt-4">
-                              <Button
-                                variant="destructive"
-                                onClick={() => handleDelete(employee.id)}
-                              >
-                                Confirmar
-                              </Button>
-                              <DialogTrigger asChild>
-                                <Button variant="outline">Cancelar</Button>
-                              </DialogTrigger>
-                            </div>
-                          </DialogContent>
-                        </Dialog>
-                      </div>
-                    </TableCell>
+            {employees.length === 0 ? (
+              <div className="text-center py-8 text-gray-500">
+                <Users className="h-12 w-12 mx-auto mb-4 opacity-50" />
+                <p>No hay empleados registrados</p>
+              </div>
+            ) : (
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Nombre</TableHead>
+                    <TableHead>Cédula</TableHead>
+                    <TableHead>Cargo</TableHead>
+                    <TableHead>Departamento</TableHead>
+                    <TableHead>Teléfono</TableHead>
+                    <TableHead>Acciones</TableHead>
                   </TableRow>
-                ))}
-              </TableBody>
-            </Table>
+                </TableHeader>
+                <TableBody>
+                  {employees.map((employee) => (
+                    <TableRow key={employee.id}>
+                      <TableCell className="font-medium">{employee.nombre}</TableCell>
+                      <TableCell>{employee.cedula}</TableCell>
+                      <TableCell>{employee.cargo}</TableCell>
+                      <TableCell>{employee.departamento}</TableCell>
+                      <TableCell>{employee.telefono}</TableCell>
+                      <TableCell>
+                        <div className="flex gap-2">
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => handleEdit(employee)}
+                          >
+                            <Edit className="h-4 w-4" />
+                          </Button>
+                          <Dialog>
+                            <DialogTrigger asChild>
+                              <Button variant="destructive" size="sm">
+                                <Trash2 className="h-4 w-4" />
+                              </Button>
+                            </DialogTrigger>
+                            <DialogContent>
+                              <DialogHeader>
+                                <DialogTitle>Confirmar Desvinculación</DialogTitle>
+                              </DialogHeader>
+                              <p>¿Estás seguro de que deseas desvincular a {employee.nombre}?</p>
+                              <div className="flex gap-2 mt-4">
+                                <Button
+                                  variant="destructive"
+                                  onClick={() => handleDelete(employee.id)}
+                                >
+                                  Confirmar
+                                </Button>
+                                <DialogTrigger asChild>
+                                  <Button variant="outline">Cancelar</Button>
+                                </DialogTrigger>
+                              </div>
+                            </DialogContent>
+                          </Dialog>
+                        </div>
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            )}
           </CardContent>
         </Card>
       </div>
@@ -396,8 +458,230 @@ const FormerEmployees = ({ formerEmployees, onBack }) => {
   );
 };
 
+// Componente para incapacidades
+const Incapacidades = ({ incapacidades, setIncapacidades, employees, onBack }) => {
+  const [showForm, setShowForm] = useState(false);
+  const [formData, setFormData] = useState({
+    empleadoId: "",
+    fechaInicio: "",
+    fechaFin: "",
+    tipoIncapacidad: "",
+    diagnostico: "",
+    eps: "",
+    observaciones: ""
+  });
+  const { toast } = useToast();
+
+  const handleSubmit = (e) => {
+    e.preventDefault();
+    const empleado = employees.find(emp => emp.id === parseInt(formData.empleadoId));
+    
+    if (!empleado) {
+      toast({
+        title: "Error",
+        description: "Empleado no encontrado",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    const nuevaIncapacidad = {
+      id: Date.now(),
+      empleadoNombre: empleado.nombre,
+      empleadoCedula: empleado.cedula,
+      ...formData,
+      fechaRegistro: new Date().toISOString().split('T')[0]
+    };
+
+    setIncapacidades(prev => [...prev, nuevaIncapacidad]);
+    setFormData({
+      empleadoId: "",
+      fechaInicio: "",
+      fechaFin: "",
+      tipoIncapacidad: "",
+      diagnostico: "",
+      eps: "",
+      observaciones: ""
+    });
+    setShowForm(false);
+
+    toast({
+      title: "Incapacidad registrada",
+      description: `Incapacidad registrada para ${empleado.nombre}`,
+    });
+  };
+
+  return (
+    <div className="min-h-screen bg-gray-50 p-6">
+      <div className="max-w-6xl mx-auto">
+        <div className="flex items-center justify-between mb-6">
+          <div className="flex items-center">
+            <Button variant="outline" onClick={onBack} className="mr-4">
+              ← Volver
+            </Button>
+            <h1 className="text-3xl font-bold text-gray-800">Incapacidades</h1>
+          </div>
+          <Button onClick={() => setShowForm(true)}>
+            <Plus className="h-4 w-4 mr-2" />
+            Nueva Incapacidad
+          </Button>
+        </div>
+
+        {showForm && (
+          <Card className="mb-6">
+            <CardHeader>
+              <CardTitle>Registrar Nueva Incapacidad</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <form onSubmit={handleSubmit} className="grid md:grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-medium mb-1">Empleado</label>
+                  <select
+                    required
+                    className="w-full p-2 border rounded-md"
+                    value={formData.empleadoId}
+                    onChange={(e) => setFormData(prev => ({ ...prev, empleadoId: e.target.value }))}
+                  >
+                    <option value="">Seleccionar empleado</option>
+                    {employees.map(emp => (
+                      <option key={emp.id} value={emp.id}>{emp.nombre} - {emp.cedula}</option>
+                    ))}
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium mb-1">Tipo de Incapacidad</label>
+                  <select
+                    required
+                    className="w-full p-2 border rounded-md"
+                    value={formData.tipoIncapacidad}
+                    onChange={(e) => setFormData(prev => ({ ...prev, tipoIncapacidad: e.target.value }))}
+                  >
+                    <option value="">Seleccionar tipo</option>
+                    <option value="Enfermedad General">Enfermedad General</option>
+                    <option value="Accidente de Trabajo">Accidente de Trabajo</option>
+                    <option value="Enfermedad Laboral">Enfermedad Laboral</option>
+                    <option value="Maternidad">Maternidad</option>
+                    <option value="Paternidad">Paternidad</option>
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium mb-1">Fecha Inicio</label>
+                  <input
+                    type="date"
+                    required
+                    className="w-full p-2 border rounded-md"
+                    value={formData.fechaInicio}
+                    onChange={(e) => setFormData(prev => ({ ...prev, fechaInicio: e.target.value }))}
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium mb-1">Fecha Fin</label>
+                  <input
+                    type="date"
+                    required
+                    className="w-full p-2 border rounded-md"
+                    value={formData.fechaFin}
+                    onChange={(e) => setFormData(prev => ({ ...prev, fechaFin: e.target.value }))}
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium mb-1">Diagnóstico</label>
+                  <input
+                    type="text"
+                    required
+                    className="w-full p-2 border rounded-md"
+                    value={formData.diagnostico}
+                    onChange={(e) => setFormData(prev => ({ ...prev, diagnostico: e.target.value }))}
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium mb-1">EPS</label>
+                  <input
+                    type="text"
+                    className="w-full p-2 border rounded-md"
+                    value={formData.eps}
+                    onChange={(e) => setFormData(prev => ({ ...prev, eps: e.target.value }))}
+                  />
+                </div>
+                <div className="md:col-span-2">
+                  <label className="block text-sm font-medium mb-1">Observaciones</label>
+                  <textarea
+                    className="w-full p-2 border rounded-md"
+                    rows="3"
+                    value={formData.observaciones}
+                    onChange={(e) => setFormData(prev => ({ ...prev, observaciones: e.target.value }))}
+                  />
+                </div>
+                <div className="md:col-span-2 flex gap-2">
+                  <Button type="submit">Registrar Incapacidad</Button>
+                  <Button type="button" variant="outline" onClick={() => setShowForm(false)}>
+                    Cancelar
+                  </Button>
+                </div>
+              </form>
+            </CardContent>
+          </Card>
+        )}
+
+        <Card>
+          <CardHeader>
+            <CardTitle>Registro de Incapacidades ({incapacidades.length})</CardTitle>
+          </CardHeader>
+          <CardContent>
+            {incapacidades.length === 0 ? (
+              <div className="text-center py-8 text-gray-500">
+                <FileText className="h-12 w-12 mx-auto mb-4 opacity-50" />
+                <p>No hay incapacidades registradas</p>
+              </div>
+            ) : (
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Empleado</TableHead>
+                    <TableHead>Tipo</TableHead>
+                    <TableHead>Fecha Inicio</TableHead>
+                    <TableHead>Fecha Fin</TableHead>
+                    <TableHead>Diagnóstico</TableHead>
+                    <TableHead>Estado</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {incapacidades.map((incapacidad) => {
+                    const hoy = new Date();
+                    const fechaFin = new Date(incapacidad.fechaFin);
+                    const estaActiva = fechaFin >= hoy;
+                    
+                    return (
+                      <TableRow key={incapacidad.id}>
+                        <TableCell className="font-medium">{incapacidad.empleadoNombre}</TableCell>
+                        <TableCell>{incapacidad.tipoIncapacidad}</TableCell>
+                        <TableCell>{incapacidad.fechaInicio}</TableCell>
+                        <TableCell>{incapacidad.fechaFin}</TableCell>
+                        <TableCell>{incapacidad.diagnostico}</TableCell>
+                        <TableCell>
+                          <span className={`px-2 py-1 rounded-full text-xs ${
+                            estaActiva 
+                              ? 'bg-yellow-100 text-yellow-800' 
+                              : 'bg-gray-100 text-gray-800'
+                          }`}>
+                            {estaActiva ? 'Activa' : 'Finalizada'}
+                          </span>
+                        </TableCell>
+                      </TableRow>
+                    );
+                  })}
+                </TableBody>
+              </Table>
+            )}
+          </CardContent>
+        </Card>
+      </div>
+    </div>
+  );
+};
+
 // Componente para agregar empleados
-const AddEmployee = ({ onBack }) => {
+const AddEmployee = ({ employees, setEmployees, onBack }) => {
   const [formData, setFormData] = useState({
     nombre: "",
     cedula: "",
@@ -459,12 +743,53 @@ const AddEmployee = ({ onBack }) => {
 
   const handleSubmit = (e) => {
     e.preventDefault();
+    
+    const nuevoEmpleado = {
+      id: Date.now(),
+      ...formData,
+      fechaRegistro: new Date().toISOString().split('T')[0]
+    };
+
+    setEmployees(prev => [...prev, nuevoEmpleado]);
+    
     toast({
       title: "Empleado agregado exitosamente",
       description: `${formData.nombre} ha sido registrado en el sistema.`,
     });
-    // Aquí se guardarían los datos en la base de datos
-    console.log("Datos del empleado:", formData);
+
+    // Limpiar formulario
+    setFormData({
+      nombre: "",
+      cedula: "",
+      lugarExpedicion: "",
+      sexo: "",
+      cargo: "",
+      departamento: "",
+      salario: "",
+      bono: "",
+      tipoContrato: "",
+      duracionContrato: "",
+      fechaInicioContrato: "",
+      fechaFinalContrato: "",
+      fechaNacimiento: "",
+      direccion: "",
+      telefono: "",
+      barrio: "",
+      ciudad: "",
+      tipoSangre: "",
+      arl: "",
+      eps: "",
+      pension: "",
+      caja: "",
+      correo: "",
+      estadoCivil: "",
+      numeroHijos: "",
+      nombresHijos: "",
+      sexoHijos: "",
+      fechaNacimientoHijos: "",
+      telefonoEmergencia: "",
+      observaciones: ""
+    });
   };
 
   return (
@@ -838,24 +1163,47 @@ const AddEmployee = ({ onBack }) => {
 };
 
 // Componente de Indicadores
-const Indicators = ({ onBack }) => {
-  const indicators = {
-    totalEmployees: 124,
-    newHires: 8,
-    contractsExpiring: 12,
-    avgAttendance: 95,
-    avgSalary: 2500000,
-    departmentBreakdown: [
-      { name: "Ventas", count: 35 },
-      { name: "Administración", count: 28 },
-      { name: "Producción", count: 45 },
-      { name: "IT", count: 16 }
-    ],
-    genderBreakdown: [
-      { name: "Masculino", count: 68 },
-      { name: "Femenino", count: 56 }
-    ]
+const Indicators = ({ employees, incapacidades, onBack }) => {
+  const calculateIndicators = () => {
+    const totalEmployees = employees.length;
+    const avgSalary = employees.length > 0 
+      ? employees.reduce((sum, emp) => sum + (parseFloat(emp.salario) || 0), 0) / employees.length 
+      : 0;
+    
+    const departmentBreakdown = employees.reduce((acc, emp) => {
+      const dept = emp.departamento || 'Sin Departamento';
+      acc[dept] = (acc[dept] || 0) + 1;
+      return acc;
+    }, {});
+
+    const genderBreakdown = employees.reduce((acc, emp) => {
+      const gender = emp.sexo || 'No Especificado';
+      acc[gender] = (acc[gender] || 0) + 1;
+      return acc;
+    }, {});
+
+    const incapacidadesActivas = incapacidades.filter(inc => {
+      const fechaFin = new Date(inc.fechaFin);
+      return fechaFin >= new Date();
+    }).length;
+
+    const tiposIncapacidad = incapacidades.reduce((acc, inc) => {
+      const tipo = inc.tipoIncapacidad || 'No Especificado';
+      acc[tipo] = (acc[tipo] || 0) + 1;
+      return acc;
+    }, {});
+
+    return {
+      totalEmployees,
+      avgSalary,
+      departmentBreakdown: Object.entries(departmentBreakdown).map(([name, count]) => ({ name, count })),
+      genderBreakdown: Object.entries(genderBreakdown).map(([name, count]) => ({ name, count })),
+      incapacidadesActivas,
+      tiposIncapacidad: Object.entries(tiposIncapacidad).map(([name, count]) => ({ name, count }))
+    };
   };
+
+  const indicators = calculateIndicators();
 
   return (
     <div className="min-h-screen bg-gray-50 p-6">
@@ -874,42 +1222,40 @@ const Indicators = ({ onBack }) => {
             </CardHeader>
             <CardContent>
               <div className="text-3xl font-bold text-blue-600">{indicators.totalEmployees}</div>
-              <p className="text-sm text-green-600">+5% vs mes anterior</p>
             </CardContent>
           </Card>
 
           <Card>
             <CardHeader className="pb-3">
-              <CardTitle className="text-sm font-medium text-gray-600">Nuevas Contrataciones</CardTitle>
+              <CardTitle className="text-sm font-medium text-gray-600">Salario Promedio</CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="text-3xl font-bold text-green-600">{indicators.newHires}</div>
-              <p className="text-sm text-blue-600">Este mes</p>
+              <div className="text-3xl font-bold text-green-600">
+                ${Math.round(indicators.avgSalary).toLocaleString()}
+              </div>
             </CardContent>
           </Card>
 
           <Card>
             <CardHeader className="pb-3">
-              <CardTitle className="text-sm font-medium text-gray-600">Contratos por Vencer</CardTitle>
+              <CardTitle className="text-sm font-medium text-gray-600">Incapacidades Activas</CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="text-3xl font-bold text-orange-600">{indicators.contractsExpiring}</div>
-              <p className="text-sm text-red-600">Próximos 2 meses</p>
+              <div className="text-3xl font-bold text-red-600">{indicators.incapacidadesActivas}</div>
             </CardContent>
           </Card>
 
           <Card>
             <CardHeader className="pb-3">
-              <CardTitle className="text-sm font-medium text-gray-600">Asistencia Promedio</CardTitle>
+              <CardTitle className="text-sm font-medium text-gray-600">Total Incapacidades</CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="text-3xl font-bold text-purple-600">{indicators.avgAttendance}%</div>
-              <p className="text-sm text-green-600">+2% vs mes anterior</p>
+              <div className="text-3xl font-bold text-orange-600">{incapacidades.length}</div>
             </CardContent>
           </Card>
         </div>
 
-        <div className="grid md:grid-cols-2 gap-6">
+        <div className="grid md:grid-cols-2 gap-6 mb-6">
           <Card>
             <CardHeader>
               <CardTitle>Empleados por Departamento</CardTitle>
@@ -923,7 +1269,7 @@ const Indicators = ({ onBack }) => {
                       <div className="w-24 bg-gray-200 rounded-full h-2">
                         <div 
                           className="bg-blue-600 h-2 rounded-full" 
-                          style={{ width: `${(dept.count / indicators.totalEmployees) * 100}%` }}
+                          style={{ width: `${indicators.totalEmployees ? (dept.count / indicators.totalEmployees) * 100 : 0}%` }}
                         ></div>
                       </div>
                       <span className="text-sm text-gray-600">{dept.count}</span>
@@ -947,7 +1293,7 @@ const Indicators = ({ onBack }) => {
                       <div className="w-24 bg-gray-200 rounded-full h-2">
                         <div 
                           className={`h-2 rounded-full ${index === 0 ? 'bg-blue-600' : 'bg-pink-600'}`}
-                          style={{ width: `${(gender.count / indicators.totalEmployees) * 100}%` }}
+                          style={{ width: `${indicators.totalEmployees ? (gender.count / indicators.totalEmployees) * 100 : 0}%` }}
                         ></div>
                       </div>
                       <span className="text-sm text-gray-600">{gender.count}</span>
@@ -959,30 +1305,18 @@ const Indicators = ({ onBack }) => {
           </Card>
         </div>
 
-        <Card className="mt-6">
+        <Card>
           <CardHeader>
-            <CardTitle>Información Salarial</CardTitle>
+            <CardTitle>Incapacidades por Tipo</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="grid md:grid-cols-3 gap-6">
-              <div className="text-center">
-                <div className="text-2xl font-bold text-green-600">
-                  ${indicators.avgSalary.toLocaleString()}
+            <div className="grid md:grid-cols-2 gap-4">
+              {indicators.tiposIncapacidad.map((tipo, index) => (
+                <div key={index} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+                  <span className="text-sm font-medium">{tipo.name}</span>
+                  <span className="text-lg font-bold text-orange-600">{tipo.count}</span>
                 </div>
-                <div className="text-sm text-gray-600">Salario Promedio</div>
-              </div>
-              <div className="text-center">
-                <div className="text-2xl font-bold text-blue-600">
-                  ${Math.round(indicators.avgSalary * 0.8).toLocaleString()}
-                </div>
-                <div className="text-sm text-gray-600">Salario Mínimo</div>
-              </div>
-              <div className="text-center">
-                <div className="text-2xl font-bold text-purple-600">
-                  ${Math.round(indicators.avgSalary * 1.5).toLocaleString()}
-                </div>
-                <div className="text-sm text-gray-600">Salario Máximo</div>
-              </div>
+              ))}
             </div>
           </CardContent>
         </Card>
@@ -993,12 +1327,10 @@ const Indicators = ({ onBack }) => {
 
 // Componente de Control de Huellero
 const TimeTracking = ({ onBack }) => {
-  const [lateArrivals, setLateArrivals] = useState([
-    { id: 1, employee: "Juan Pérez", date: "2024-06-25", arrivalTime: "08:15", lateness: "15 min" },
-    { id: 2, employee: "María García", date: "2024-06-25", arrivalTime: "08:30", lateness: "30 min" },
-    { id: 3, employee: "Carlos López", date: "2024-06-24", arrivalTime: "08:45", lateness: "45 min" },
-    { id: 4, employee: "Ana Martínez", date: "2024-06-24", arrivalTime: "08:20", lateness: "20 min" },
-  ]);
+  const [lateArrivals, setLateArrivals] = useState(() => {
+    const saved = localStorage.getItem('lateArrivals');
+    return saved ? JSON.parse(saved) : [];
+  });
 
   const [newRecord, setNewRecord] = useState({
     employee: "",
@@ -1009,21 +1341,25 @@ const TimeTracking = ({ onBack }) => {
 
   const { toast } = useToast();
 
+  useEffect(() => {
+    localStorage.setItem('lateArrivals', JSON.stringify(lateArrivals));
+  }, [lateArrivals]);
+
   const handleAddRecord = (e) => {
     e.preventDefault();
     
     // Calcular retraso
     const scheduledTime = new Date(`2024-01-01 08:00:00`);
     const actualTime = new Date(`2024-01-01 ${newRecord.arrivalTime}:00`);
-    const lateness = Math.max(0, Math.floor((actualTime - scheduledTime) / (1000 * 60)));
+    const latenessMinutes = Math.max(0, Math.floor((actualTime - scheduledTime) / (1000 * 60)));
     
-    if (lateness > 0) {
+    if (latenessMinutes > 0) {
       const newLateRecord = {
-        id: lateArrivals.length + 1,
+        id: Date.now(),
         employee: newRecord.employee,
         date: newRecord.date,
         arrivalTime: newRecord.arrivalTime,
-        lateness: `${lateness} min`,
+        lateness: `${latenessMinutes} min`,
         reason: newRecord.reason
       };
 
@@ -1134,38 +1470,45 @@ const TimeTracking = ({ onBack }) => {
             <CardTitle>Registro de Llegadas Tardías</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="overflow-x-auto">
-              <table className="w-full border-collapse">
-                <thead>
-                  <tr className="border-b">
-                    <th className="text-left p-2 font-medium">Empleado</th>
-                    <th className="text-left p-2 font-medium">Fecha</th>
-                    <th className="text-left p-2 font-medium">Hora Llegada</th>
-                    <th className="text-left p-2 font-medium">Retraso</th>
-                    <th className="text-left p-2 font-medium">Acciones</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {lateArrivals.map((record) => (
-                    <tr key={record.id} className="border-b hover:bg-gray-50">
-                      <td className="p-2">{record.employee}</td>
-                      <td className="p-2">{record.date}</td>
-                      <td className="p-2">{record.arrivalTime}</td>
-                      <td className="p-2">
-                        <span className="px-2 py-1 bg-red-100 text-red-800 rounded-full text-xs">
-                          {record.lateness}
-                        </span>
-                      </td>
-                      <td className="p-2">
-                        <Button variant="outline" size="sm">
-                          Editar
-                        </Button>
-                      </td>
+            {lateArrivals.length === 0 ? (
+              <div className="text-center py-8 text-gray-500">
+                <Clock className="h-12 w-12 mx-auto mb-4 opacity-50" />
+                <p>No hay llegadas tardías registradas</p>
+              </div>
+            ) : (
+              <div className="overflow-x-auto">
+                <table className="w-full border-collapse">
+                  <thead>
+                    <tr className="border-b">
+                      <th className="text-left p-2 font-medium">Empleado</th>
+                      <th className="text-left p-2 font-medium">Fecha</th>
+                      <th className="text-left p-2 font-medium">Hora Llegada</th>
+                      <th className="text-left p-2 font-medium">Retraso</th>
+                      <th className="text-left p-2 font-medium">Acciones</th>
                     </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
+                  </thead>
+                  <tbody>
+                    {lateArrivals.map((record) => (
+                      <tr key={record.id} className="border-b hover:bg-gray-50">
+                        <td className="p-2">{record.employee}</td>
+                        <td className="p-2">{record.date}</td>
+                        <td className="p-2">{record.arrivalTime}</td>
+                        <td className="p-2">
+                          <span className="px-2 py-1 bg-red-100 text-red-800 rounded-full text-xs">
+                            {record.lateness}
+                          </span>
+                        </td>
+                        <td className="p-2">
+                          <Button variant="outline" size="sm">
+                            Editar
+                          </Button>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
           </CardContent>
         </Card>
       </div>
