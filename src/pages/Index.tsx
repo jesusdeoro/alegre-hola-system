@@ -1,8 +1,7 @@
-
 import { useState, useEffect } from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import { Users, Calendar, BarChart3, Clock, Bell, Cake, UserX, FileText, Download, FileImage, Trophy } from "lucide-react";
+import { Users, Calendar, BarChart3, Clock, Bell, Cake, UserX, FileText, Download, FileImage, Trophy, Calculator } from "lucide-react";
 
 // Import refactored components
 import EmployeeMatrix from "@/components/EmployeeMatrix";
@@ -14,6 +13,7 @@ import TimeTracking from "@/components/TimeTracking";
 import WorkCertificates from "@/components/WorkCertificates";
 import SiigoIntegration from "@/components/SiigoIntegration";
 import MenuButton from "@/components/MenuButton";
+import Nomina from "@/components/Nomina";
 
 const Index = () => {
   const [activeSection, setActiveSection] = useState("inicio");
@@ -182,6 +182,13 @@ const Index = () => {
     return <SiigoIntegration onBack={() => setActiveSection("inicio")} />;
   }
 
+  if (activeSection === "nomina") {
+    return <Nomina 
+      employees={employees}
+      onBack={() => setActiveSection("inicio")} 
+    />;
+  }
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 p-6">
       <div className="max-w-7xl mx-auto">
@@ -299,6 +306,14 @@ const Index = () => {
             title="Integración Siigo"
             section="siigo"
             description="Conecta con la API de Siigo para futuras funcionalidades"
+            onClick={setActiveSection}
+          />
+
+          <MenuButton
+            icon={Calculator}
+            title="Nómina"
+            section="nomina"
+            description="Gestiona bonificaciones y prepara datos para envío a Siigo"
             onClick={setActiveSection}
           />
         </div>
