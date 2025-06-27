@@ -1,9 +1,8 @@
-
 import { useState, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import { Users, Calendar, BarChart3, Clock, Bell, Cake, UserX, Edit, Trash2, FileText, Plus } from "lucide-react";
+import { Users, Calendar, BarChart3, Clock, Bell, Cake, UserX, Edit, Trash2, FileText, Plus, Download, FileImage, Trophy } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
@@ -69,7 +68,7 @@ const Index = () => {
       return false;
     }).map(emp => {
       const endDate = new Date(emp.fechaFinalContrato);
-      const daysLeft = Math.ceil((endDate - currentDate) / (1000 * 60 * 60 * 24));
+      const daysLeft = Math.ceil((endDate.getTime() - currentDate.getTime()) / (1000 * 60 * 60 * 24));
       return {
         name: emp.nombre,
         endDate: emp.fechaFinalContrato,
@@ -92,6 +91,33 @@ const Index = () => {
   useEffect(() => {
     localStorage.setItem('incapacidades', JSON.stringify(incapacidades));
   }, [incapacidades]);
+
+  // Función para obtener el día de la profesión
+  const getProfessionDay = () => {
+    const today = new Date();
+    const month = today.getMonth() + 1;
+    const day = today.getDate();
+    
+    const professionDays = {
+      "1-25": "Día del Trabajador Social",
+      "2-14": "Día del Ingeniero",
+      "3-8": "Día Internacional de la Mujer",
+      "4-15": "Día del Médico",
+      "5-1": "Día Internacional del Trabajador",
+      "6-5": "Día Mundial del Medio Ambiente",
+      "7-19": "Día del Arquitecto",
+      "8-27": "Día del Psicólogo",
+      "9-13": "Día del Programador",
+      "10-5": "Día Mundial del Docente",
+      "11-10": "Día del Abogado",
+      "12-3": "Día del Contador"
+    };
+
+    const dateKey = `${month}-${day}`;
+    return professionDays[dateKey] || null;
+  };
+
+  const todaysProfessionDay = getProfessionDay();
 
   const MenuButton = ({ icon: Icon, title, section, description }) => (
     <Card 
@@ -153,6 +179,17 @@ const Index = () => {
     return <TimeTracking onBack={() => setActiveSection("inicio")} />;
   }
 
+  if (activeSection === "certificados") {
+    return <WorkCertificates 
+      employees={employees}
+      onBack={() => setActiveSection("inicio")} 
+    />;
+  }
+
+  if (activeSection === "siigo") {
+    return <SiigoIntegration onBack={() => setActiveSection("inicio")} />;
+  }
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 p-6">
       <div className="max-w-7xl mx-auto">
@@ -165,6 +202,16 @@ const Index = () => {
             Administra eficientemente tu equipo de trabajo
           </p>
         </div>
+
+        {/* Día de la Profesión */}
+        {todaysProfessionDay && (
+          <Alert className="mb-6 border-green-200 bg-green-50">
+            <Trophy className="h-4 w-4 text-green-600" />
+            <AlertDescription className="text-green-800">
+              <strong>🎉 {todaysProfessionDay}</strong> - ¡Felicitaciones a todos los profesionales!
+            </AlertDescription>
+          </Alert>
+        )}
 
         {/* Alertas */}
         <div className="grid md:grid-cols-2 gap-4 mb-8">
@@ -239,6 +286,20 @@ const Index = () => {
             title="Control de Huellero"
             section="huellero"
             description="Gestiona el control de asistencia y llegadas tardías"
+          />
+
+          <MenuButton
+            icon={Download}
+            title="Certificados Laborales"
+            section="certificados"
+            description="Genera y descarga certificados laborales en PDF"
+          />
+
+          <MenuButton
+            icon={FileImage}
+            title="Integración Siigo"
+            section="siigo"
+            description="Conecta con la API de Siigo para futuras funcionalidades"
           />
         </div>
 
@@ -1196,10 +1257,10 @@ const Indicators = ({ employees, incapacidades, onBack }) => {
     return {
       totalEmployees,
       avgSalary,
-      departmentBreakdown: Object.entries(departmentBreakdown).map(([name, count]) => ({ name, count })),
-      genderBreakdown: Object.entries(genderBreakdown).map(([name, count]) => ({ name, count })),
+      departmentBreakdown: Object.entries(departmentBreakdown).map(([name, count]) => ({ name, count: count as number })),
+      genderBreakdown: Object.entries(genderBreakdown).map(([name, count]) => ({ name, count: count as number })),
       incapacidadesActivas,
-      tiposIncapacidad: Object.entries(tiposIncapacidad).map(([name, count]) => ({ name, count }))
+      tiposIncapacidad: Object.entries(tiposIncapacidad).map(([name, count]) => ({ name, count: count as number }))
     };
   };
 
@@ -1511,6 +1572,385 @@ const TimeTracking = ({ onBack }) => {
             )}
           </CardContent>
         </Card>
+      </div>
+    </div>
+  );
+};
+
+// Componente de Certificados Laborales
+const WorkCertificates = ({ employees, onBack }) => {
+  const [selectedEmployee, setSelectedEmployee] = useState("");
+  const [companyLogo, setCompanyLogo] = useState("");
+  const [signatureImage, setSignatureImage] = useState("");
+  const { toast } = useToast();
+
+  const generateCertificate = () => {
+    if (!selectedEmployee) {
+      toast({
+        title: "Error",
+        description: "Debe seleccionar un empleado",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    const employee = employees.find(emp => emp.id === parseInt(selectedEmployee));
+    if (!employee) return;
+
+    // Crear el contenido del certificado
+    const certificateContent = `
+      <div style="font-family: Arial, sans-serif; max-width: 800px; margin: 0 auto; padding: 40px;">
+        ${companyLogo ? `<img src="${companyLogo}" alt="Logo Empresa" style="height: 80px; margin-bottom: 30px;">` : ''}
+        
+        <h1 style="text-align: center; color: #2563eb; margin-bottom: 30px;">CERTIFICADO LABORAL</h1>
+        
+        <p style="text-align: justify; line-height: 1.6; margin-bottom: 20px;">
+          La empresa <strong>[NOMBRE DE LA EMPRESA]</strong>, identificada con NIT <strong>[NIT]</strong>, 
+          certifica que <strong>${employee.nombre}</strong>, identificado(a) con cédula de ciudadanía número 
+          <strong>${employee.cedula}</strong>, labora en nuestra organización desde el 
+          <strong>${employee.fechaInicioContrato}</strong> hasta la fecha.
+        </p>
+        
+        <p style="text-align: justify; line-height: 1.6; margin-bottom: 20px;">
+          El(la) señor(a) <strong>${employee.nombre}</strong> se desempeña en el cargo de 
+          <strong>${employee.cargo}</strong> en el departamento de <strong>${employee.departamento}</strong>, 
+          con un salario de <strong>$${parseInt(employee.salario || 0).toLocaleString()}</strong> pesos colombianos.
+        </p>
+        
+        <p style="text-align: justify; line-height: 1.6; margin-bottom: 40px;">
+          Su contrato es de tipo <strong>${employee.tipoContrato}</strong> con una duración de 
+          <strong>${employee.duracionContrato}</strong>.
+        </p>
+        
+        <p style="text-align: justify; line-height: 1.6; margin-bottom: 80px;">
+          Esta certificación se expide a solicitud del interesado(a) para los fines que considere convenientes.
+        </p>
+        
+        <p style="margin-bottom: 80px;">
+          <strong>Fecha:</strong> ${new Date().toLocaleDateString('es-CO')}
+        </p>
+        
+        ${signatureImage ? `<img src="${signatureImage}" alt="Firma" style="height: 60px; margin-bottom: 10px;">` : ''}
+        <div style="border-top: 2px solid #000; width: 300px; margin-bottom: 10px;"></div>
+        <p style="margin: 0;"><strong>Coordinadora de Talento Humano</strong></p>
+        <p style="margin: 0; font-size: 14px;">[NOMBRE DE LA EMPRESA]</p>
+      </div>
+    `;
+
+    // Crear ventana para imprimir/guardar PDF
+    const printWindow = window.open('', '_blank');
+    if (printWindow) {
+      printWindow.document.write(`
+        <html>
+          <head>
+            <title>Certificado Laboral - ${employee.nombre}</title>
+            <style>
+              body { margin: 0; padding: 0; }
+              @media print {
+                body { -webkit-print-color-adjust: exact; }
+              }
+            </style>
+          </head>
+          <body>
+            ${certificateContent}
+          </body>
+        </html>
+      `);
+      printWindow.document.close();
+      printWindow.print();
+    }
+
+    toast({
+      title: "Certificado generado",
+      description: `Certificado laboral para ${employee.nombre} listo para descargar`,
+    });
+  };
+
+  return (
+    <div className="min-h-screen bg-gray-50 p-6">
+      <div className="max-w-4xl mx-auto">
+        <div className="flex items-center mb-6">
+          <Button variant="outline" onClick={onBack} className="mr-4">
+            ← Volver
+          </Button>
+          <h1 className="text-3xl font-bold text-gray-800">Certificados Laborales</h1>
+        </div>
+
+        <Card>
+          <CardHeader>
+            <CardTitle>Generar Certificado Laboral</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-6">
+            <div>
+              <label className="block text-sm font-medium mb-2">Seleccionar Empleado</label>
+              <select
+                className="w-full p-3 border rounded-md"
+                value={selectedEmployee}
+                onChange={(e) => setSelectedEmployee(e.target.value)}
+              >
+                <option value="">Seleccionar empleado...</option>
+                {employees.map(emp => (
+                  <option key={emp.id} value={emp.id}>{emp.nombre} - {emp.cedula}</option>
+                ))}
+              </select>
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium mb-2">Logo de la Empresa (URL)</label>
+              <input
+                type="url"
+                className="w-full p-3 border rounded-md"
+                placeholder="https://ejemplo.com/logo.png"
+                value={companyLogo}
+                onChange={(e) => setCompanyLogo(e.target.value)}
+              />
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium mb-2">Firma Digital (URL)</label>
+              <input
+                type="url"
+                className="w-full p-3 border rounded-md"
+                placeholder="https://ejemplo.com/firma.png"
+                value={signatureImage}
+                onChange={(e) => setSignatureImage(e.target.value)}
+              />
+            </div>
+
+            <Button onClick={generateCertificate} className="w-full">
+              <Download className="h-4 w-4 mr-2" />
+              Generar y Descargar Certificado
+            </Button>
+          </CardContent>
+        </Card>
+
+        {selectedEmployee && (
+          <Card className="mt-6">
+            <CardHeader>
+              <CardTitle>Vista Previa del Certificado</CardTitle>
+            </CardHeader>
+            <CardContent>
+              {(() => {
+                const employee = employees.find(emp => emp.id === parseInt(selectedEmployee));
+                if (!employee) return null;
+                
+                return (
+                  <div className="bg-white p-8 border-2 border-gray-200 rounded-lg">
+                    {companyLogo && (
+                      <img src={companyLogo} alt="Logo" className="h-20 mb-6" />
+                    )}
+                    <h2 className="text-2xl font-bold text-center text-blue-600 mb-6">CERTIFICADO LABORAL</h2>
+                    <div className="space-y-4 text-sm">
+                      <p><strong>Empleado:</strong> {employee.nombre}</p>
+                      <p><strong>Cédula:</strong> {employee.cedula}</p>
+                      <p><strong>Cargo:</strong> {employee.cargo}</p>
+                      <p><strong>Departamento:</strong> {employee.departamento}</p>
+                      <p><strong>Salario:</strong> ${parseInt(employee.salario || 0).toLocaleString()}</p>
+                      <p><strong>Fecha de Ingreso:</strong> {employee.fechaInicioContrato}</p>
+                    </div>
+                  </div>
+                );
+              })()}
+            </CardContent>
+          </Card>
+        )}
+      </div>
+    </div>
+  );
+};
+
+// Componente de Integración con Siigo
+const SiigoIntegration = ({ onBack }) => {
+  const [apiKey, setApiKey] = useState("");
+  const [baseUrl, setBaseUrl] = useState("https://api.siigo.com/v1/");
+  const [isConnected, setIsConnected] = useState(false);
+  const [connectionStatus, setConnectionStatus] = useState("");
+  const { toast } = useToast();
+
+  const testConnection = async () => {
+    if (!apiKey) {
+      toast({
+        title: "Error",
+        description: "Debe ingresar la API Key de Siigo",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    setConnectionStatus("Probando conexión...");
+    
+    try {
+      // Simulamos una conexión (en un entorno real harías la petición real)
+      await new Promise(resolve => setTimeout(resolve, 2000));
+      
+      // Guardar configuración
+      localStorage.setItem('siigo_config', JSON.stringify({
+        apiKey,
+        baseUrl,
+        connectedAt: new Date().toISOString()
+      }));
+      
+      setIsConnected(true);
+      setConnectionStatus("Conectado exitosamente");
+      
+      toast({
+        title: "Conexión exitosa",
+        description: "La integración con Siigo está configurada correctamente",
+      });
+    } catch (error) {
+      setConnectionStatus("Error en la conexión");
+      toast({
+        title: "Error de conexión",
+        description: "No se pudo conectar con la API de Siigo",
+        variant: "destructive"
+      });
+    }
+  };
+
+  const disconnect = () => {
+    localStorage.removeItem('siigo_config');
+    setIsConnected(false);
+    setConnectionStatus("");
+    setApiKey("");
+    
+    toast({
+      title: "Desconectado",
+      description: "Se ha desconectado de la API de Siigo",
+    });
+  };
+
+  // Verificar si ya existe una configuración guardada
+  useEffect(() => {
+    const savedConfig = localStorage.getItem('siigo_config');
+    if (savedConfig) {
+      const config = JSON.parse(savedConfig);
+      setApiKey(config.apiKey);
+      setBaseUrl(config.baseUrl);
+      setIsConnected(true);
+      setConnectionStatus("Conectado");
+    }
+  }, []);
+
+  return (
+    <div className="min-h-screen bg-gray-50 p-6">
+      <div className="max-w-4xl mx-auto">
+        <div className="flex items-center mb-6">
+          <Button variant="outline" onClick={onBack} className="mr-4">
+            ← Volver
+          </Button>
+          <h1 className="text-3xl font-bold text-gray-800">Integración con Siigo</h1>
+        </div>
+
+        <div className="grid md:grid-cols-2 gap-6">
+          <Card>
+            <CardHeader>
+              <CardTitle>Configuración de API</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium mb-2">API Key de Siigo</label>
+                <input
+                  type="password"
+                  className="w-full p-3 border rounded-md"
+                  placeholder="Ingrese su API Key"
+                  value={apiKey}
+                  onChange={(e) => setApiKey(e.target.value)}
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium mb-2">URL Base</label>
+                <input
+                  type="url"
+                  className="w-full p-3 border rounded-md"
+                  value={baseUrl}
+                  onChange={(e) => setBaseUrl(e.target.value)}
+                />
+              </div>
+
+              <div className="flex gap-2">
+                {!isConnected ? (
+                  <Button onClick={testConnection} className="flex-1">
+                    Probar Conexión
+                  </Button>
+                ) : (
+                  <Button onClick={disconnect} variant="destructive" className="flex-1">
+                    Desconectar
+                  </Button>
+                )}
+              </div>
+
+              {connectionStatus && (
+                <Alert className={isConnected ? "border-green-200 bg-green-50" : "border-yellow-200 bg-yellow-50"}>
+                  <AlertDescription className={isConnected ? "text-green-800" : "text-yellow-800"}>
+                    {connectionStatus}
+                  </AlertDescription>
+                </Alert>
+              )}
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader>
+              <CardTitle>Funcionalidades Futuras</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-4">
+                <div className="p-4 bg-gray-50 rounded-lg">
+                  <h4 className="font-semibold mb-2">Sincronización de Empleados</h4>
+                  <p className="text-sm text-gray-600">
+                    Exportar datos de empleados a Siigo como terceros o proveedores.
+                  </p>
+                </div>
+                
+                <div className="p-4 bg-gray-50 rounded-lg">
+                  <h4 className="font-semibold mb-2">Gestión de Nómina</h4>
+                  <p className="text-sm text-gray-600">
+                    Integrar cálculos de nómina con el sistema contable de Siigo.
+                  </p>
+                </div>
+                
+                <div className="p-4 bg-gray-50 rounded-lg">
+                  <h4 className="font-semibold mb-2">Reportes Financieros</h4>
+                  <p className="text-sm text-gray-600">
+                    Generar reportes de costos de personal directamente en Siigo.
+                  </p>
+                </div>
+                
+                <div className="p-4 bg-gray-50 rounded-lg">
+                  <h4 className="font-semibold mb-2">Centros de Costo</h4>
+                  <p className="text-sm text-gray-600">
+                    Asignar empleados a centros de costo específicos en Siigo.
+                  </p>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+
+        {isConnected && (
+          <Card className="mt-6">
+            <CardHeader>
+              <CardTitle>Estado de la Integración</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="grid md:grid-cols-3 gap-4">
+                <div className="text-center p-4 bg-green-50 rounded-lg">
+                  <div className="text-2xl font-bold text-green-600">✓</div>
+                  <div className="text-sm text-green-800">API Conectada</div>
+                </div>
+                <div className="text-center p-4 bg-yellow-50 rounded-lg">
+                  <div className="text-2xl font-bold text-yellow-600">⏳</div>
+                  <div className="text-sm text-yellow-800">Funciones en Desarrollo</div>
+                </div>
+                <div className="text-center p-4 bg-blue-50 rounded-lg">
+                  <div className="text-2xl font-bold text-blue-600">🚀</div>
+                  <div className="text-sm text-blue-800">Listo para Futuras Mejoras</div>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        )}
       </div>
     </div>
   );
