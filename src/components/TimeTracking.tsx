@@ -2,60 +2,171 @@
 import { useState, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Clock } from "lucide-react";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { Clock, Upload, Download, Filter, FileSpreadsheet } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 
-const TimeTracking = ({ onBack }) => {
-  const [lateArrivals, setLateArrivals] = useState(() => {
-    const saved = localStorage.getItem('lateArrivals');
-    return saved ? JSON.parse(saved) : [];
+const TimeTracking = ({ onBack, employees }) => {
+  const [attendanceData, setAttendanceData] = useState([]);
+  const [filteredData, setFilteredData] = useState([]);
+  const [dateFilter, setDateFilter] = useState({
+    startDate: "",
+    endDate: ""
   });
-
-  const [newRecord, setNewRecord] = useState({
-    employee: "",
-    date: "",
-    arrivalTime: "",
-    reason: ""
-  });
-
+  const [isProcessing, setIsProcessing] = useState(false);
   const { toast } = useToast();
 
-  useEffect(() => {
-    localStorage.setItem('lateArrivals', JSON.stringify(lateArrivals));
-  }, [lateArrivals]);
+  // Función para procesar el archivo Excel
+  const handleFileUpload = (event) => {
+    const file = event.target.files[0];
+    if (!file) return;
 
-  const handleAddRecord = (e) => {
-    e.preventDefault();
+    setIsProcessing(true);
+    const reader = new FileReader();
     
-    const scheduledTime = new Date(`2024-01-01 08:00:00`);
-    const actualTime = new Date(`2024-01-01 ${newRecord.arrivalTime}:00`);
-    const latenessMinutes = Math.max(0, Math.floor((actualTime.getTime() - scheduledTime.getTime()) / (1000 * 60)));
+    reader.onload = (e) => {
+      try {
+        const text = e.target.result;
+        const lines = text.split('\n');
+        const headers = lines[0].split('\t');
+        
+        const processedData = [];
+        
+        for (let i = 1; i < lines.length; i++) {
+          const row = lines[i].split('\t');
+          if (row.length >= 5) {
+            const empleadoNombre = row[1]?.trim();
+            const fecha = row[3]?.trim();
+            const tiempo = row[4]?.trim();
+            
+            if (empleadoNombre && fecha && tiempo) {
+              // Verificar si está en el rango de horas 7:45 a 10:00
+              const [hours, minutes] = tiempo.split(':').map(Number);
+              const timeInMinutes = hours * 60 + minutes;
+              const startTime = 7 * 60 + 45; // 7:45
+              const endTime = 10 * 60; // 10:00
+              
+              if (timeInMinutes >= startTime && timeInMinutes <= endTime) {
+                // Calcular llegada tardía (después de 8:00)
+                const scheduledTime = 8 * 60; // 8:00
+                const latenessMinutes = Math.max(0, timeInMinutes - scheduledTime);
+                
+                // Buscar datos del empleado
+                const empleado = employees?.find(emp => 
+                  emp.nombre.toLowerCase().includes(empleadoNombre.toLowerCase()) ||
+                  empleadoNombre.toLowerCase().includes(emp.nombre.toLowerCase())
+                );
+                
+                const salario = empleado?.salario || 1300000; // Salario por defecto
+                const valorHora = salario / 230;
+                const descuento = (latenessMinutes / 60) * valorHora;
+                
+                processedData.push({
+                  id: Date.now() + i,
+                  nombre: empleadoNombre,
+                  fecha: fecha,
+                  tiempo: tiempo,
+                  valorHora: valorHora,
+                  tiempoTarde: latenessMinutes,
+                  descuento: descuento
+                });
+              }
+            }
+          }
+        }
+        
+        setAttendanceData(processedData);
+        setFilteredData(processedData);
+        
+        toast({
+          title: "Archivo procesado",
+          description: `Se procesaron ${processedData.length} registros de asistencia`,
+        });
+      } catch (error) {
+        toast({
+          title: "Error",
+          description: "Error al procesar el archivo. Verifica el formato.",
+          variant: "destructive"
+        });
+      } finally {
+        setIsProcessing(false);
+      }
+    };
     
-    if (latenessMinutes > 0) {
-      const newLateRecord = {
-        id: Date.now(),
-        employee: newRecord.employee,
-        date: newRecord.date,
-        arrivalTime: newRecord.arrivalTime,
-        lateness: `${latenessMinutes} min`,
-        reason: newRecord.reason
-      };
+    reader.readAsText(file);
+  };
 
-      setLateArrivals(prev => [newLateRecord, ...prev]);
-      
+  // Filtrar por fechas
+  const handleFilterByDate = () => {
+    if (!dateFilter.startDate || !dateFilter.endDate) {
       toast({
-        title: "Registro agregado",
-        description: `Llegada tardía registrada para ${newRecord.employee}`,
+        title: "Error",
+        description: "Selecciona ambas fechas para filtrar",
+        variant: "destructive"
       });
-    } else {
-      toast({
-        title: "Llegada puntual",
-        description: `${newRecord.employee} llegó a tiempo`,
-      });
+      return;
     }
 
-    setNewRecord({ employee: "", date: "", arrivalTime: "", reason: "" });
+    const startDate = new Date(dateFilter.startDate);
+    const endDate = new Date(dateFilter.endDate);
+    
+    const filtered = attendanceData.filter(record => {
+      const recordDate = new Date(record.fecha);
+      return recordDate >= startDate && recordDate <= endDate;
+    });
+
+    setFilteredData(filtered);
+    
+    toast({
+      title: "Filtro aplicado",
+      description: `Mostrando ${filtered.length} registros del período seleccionado`,
+    });
   };
+
+  // Exportar a Excel
+  const handleExportToExcel = () => {
+    if (filteredData.length === 0) {
+      toast({
+        title: "Error",
+        description: "No hay datos para exportar",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    // Crear CSV manualmente
+    const headers = ["Nombre", "Fecha", "Hora", "Valor Hora", "Minutos Tarde", "Descuento"];
+    const csvContent = [
+      headers.join(","),
+      ...filteredData.map(row => [
+        row.nombre,
+        row.fecha,
+        row.tiempo,
+        row.valorHora.toFixed(0),
+        row.tiempoTarde,
+        row.descuento.toFixed(0)
+      ].join(","))
+    ].join("\n");
+
+    const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
+    const link = document.createElement("a");
+    const url = URL.createObjectURL(blob);
+    link.setAttribute("href", url);
+    link.setAttribute("download", `reporte_asistencia_${new Date().toISOString().split('T')[0]}.csv`);
+    link.style.visibility = "hidden";
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+
+    toast({
+      title: "Exportado",
+      description: "Reporte descargado exitosamente",
+    });
+  };
+
+  const totalDescuentos = filteredData.reduce((total, record) => total + record.descuento, 0);
 
   return (
     <div className="min-h-screen bg-gray-50 p-6">
@@ -71,121 +182,141 @@ const TimeTracking = ({ onBack }) => {
         <div className="grid md:grid-cols-4 gap-4 mb-6">
           <Card>
             <CardContent className="p-4 text-center">
-              <div className="text-2xl font-bold text-red-600">{lateArrivals.length}</div>
+              <div className="text-2xl font-bold text-blue-600">{filteredData.length}</div>
+              <div className="text-sm text-gray-600">Registros Procesados</div>
+            </CardContent>
+          </Card>
+          <Card>
+            <CardContent className="p-4 text-center">
+              <div className="text-2xl font-bold text-red-600">
+                {filteredData.filter(r => r.tiempoTarde > 0).length}
+              </div>
               <div className="text-sm text-gray-600">Llegadas Tardías</div>
             </CardContent>
           </Card>
           <Card>
             <CardContent className="p-4 text-center">
               <div className="text-2xl font-bold text-green-600">95%</div>
-              <div className="text-sm text-gray-600">Puntualidad</div>
+              <div className="text-sm text-gray-600">Puntualidad General</div>
             </CardContent>
           </Card>
           <Card>
             <CardContent className="p-4 text-center">
-              <div className="text-2xl font-bold text-blue-600">118</div>
-              <div className="text-sm text-gray-600">Asistencias Hoy</div>
-            </CardContent>
-          </Card>
-          <Card>
-            <CardContent className="p-4 text-center">
-              <div className="text-2xl font-bold text-orange-600">23</div>
-              <div className="text-sm text-gray-600">Promedio Retraso (min)</div>
+              <div className="text-2xl font-bold text-orange-600">
+                ${totalDescuentos.toLocaleString()}
+              </div>
+              <div className="text-sm text-gray-600">Total Descuentos</div>
             </CardContent>
           </Card>
         </div>
 
-        {/* Formulario para agregar llegada tardía */}
+        {/* Carga de archivo y filtros */}
         <Card className="mb-6">
           <CardHeader>
-            <CardTitle>Registrar Llegada</CardTitle>
+            <CardTitle>Procesar Datos de Asistencia</CardTitle>
           </CardHeader>
           <CardContent>
-            <form onSubmit={handleAddRecord} className="grid md:grid-cols-4 gap-4">
-              <div>
-                <label className="block text-sm font-medium mb-1">Empleado</label>
-                <input
-                  type="text"
-                  required
-                  className="w-full p-2 border rounded-md"
-                  value={newRecord.employee}
-                  onChange={(e) => setNewRecord(prev => ({ ...prev, employee: e.target.value }))}
-                  placeholder="Nombre del empleado"
-                />
+            <div className="grid md:grid-cols-2 gap-6">
+              {/* Carga de archivo */}
+              <div className="space-y-4">
+                <div>
+                  <Label htmlFor="excel-file">Cargar archivo de asistencia (.txt/.csv)</Label>
+                  <Input
+                    id="excel-file"
+                    type="file"
+                    accept=".txt,.csv,.tsv"
+                    onChange={handleFileUpload}
+                    disabled={isProcessing}
+                  />
+                  {isProcessing && (
+                    <p className="text-sm text-blue-600 mt-2">Procesando archivo...</p>
+                  )}
+                </div>
               </div>
-              <div>
-                <label className="block text-sm font-medium mb-1">Fecha</label>
-                <input
-                  type="date"
-                  required
-                  className="w-full p-2 border rounded-md"
-                  value={newRecord.date}
-                  onChange={(e) => setNewRecord(prev => ({ ...prev, date: e.target.value }))}
-                />
+
+              {/* Filtros por fecha */}
+              <div className="space-y-4">
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <Label htmlFor="start-date">Fecha Inicio</Label>
+                    <Input
+                      id="start-date"
+                      type="date"
+                      value={dateFilter.startDate}
+                      onChange={(e) => setDateFilter(prev => ({ ...prev, startDate: e.target.value }))}
+                    />
+                  </div>
+                  <div>
+                    <Label htmlFor="end-date">Fecha Fin</Label>
+                    <Input
+                      id="end-date"
+                      type="date"
+                      value={dateFilter.endDate}
+                      onChange={(e) => setDateFilter(prev => ({ ...prev, endDate: e.target.value }))}
+                    />
+                  </div>
+                </div>
+                <div className="flex gap-2">
+                  <Button onClick={handleFilterByDate} variant="outline" className="flex-1">
+                    <Filter className="mr-2 h-4 w-4" />
+                    Filtrar por Fecha
+                  </Button>
+                  <Button onClick={handleExportToExcel} disabled={filteredData.length === 0}>
+                    <Download className="mr-2 h-4 w-4" />
+                    Exportar
+                  </Button>
+                </div>
               </div>
-              <div>
-                <label className="block text-sm font-medium mb-1">Hora de Llegada</label>
-                <input
-                  type="time"
-                  required
-                  className="w-full p-2 border rounded-md"
-                  value={newRecord.arrivalTime}
-                  onChange={(e) => setNewRecord(prev => ({ ...prev, arrivalTime: e.target.value }))}
-                />
-              </div>
-              <div className="flex items-end">
-                <Button type="submit" className="w-full">
-                  Registrar
-                </Button>
-              </div>
-            </form>
+            </div>
           </CardContent>
         </Card>
 
-        {/* Tabla de llegadas tardías */}
+        {/* Tabla de datos procesados */}
         <Card>
           <CardHeader>
-            <CardTitle>Registro de Llegadas Tardías</CardTitle>
+            <CardTitle>Reporte de Asistencia y Descuentos</CardTitle>
           </CardHeader>
           <CardContent>
-            {lateArrivals.length === 0 ? (
+            {filteredData.length === 0 ? (
               <div className="text-center py-8 text-gray-500">
-                <Clock className="h-12 w-12 mx-auto mb-4 opacity-50" />
-                <p>No hay llegadas tardías registradas</p>
+                <FileSpreadsheet className="h-12 w-12 mx-auto mb-4 opacity-50" />
+                <p>Carga un archivo de asistencia para ver los datos</p>
               </div>
             ) : (
-              <div className="overflow-x-auto">
-                <table className="w-full border-collapse">
-                  <thead>
-                    <tr className="border-b">
-                      <th className="text-left p-2 font-medium">Empleado</th>
-                      <th className="text-left p-2 font-medium">Fecha</th>
-                      <th className="text-left p-2 font-medium">Hora Llegada</th>
-                      <th className="text-left p-2 font-medium">Retraso</th>
-                      <th className="text-left p-2 font-medium">Acciones</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {lateArrivals.map((record) => (
-                      <tr key={record.id} className="border-b hover:bg-gray-50">
-                        <td className="p-2">{record.employee}</td>
-                        <td className="p-2">{record.date}</td>
-                        <td className="p-2">{record.arrivalTime}</td>
-                        <td className="p-2">
-                          <span className="px-2 py-1 bg-red-100 text-red-800 rounded-full text-xs">
-                            {record.lateness}
-                          </span>
-                        </td>
-                        <td className="p-2">
-                          <Button variant="outline" size="sm">
-                            Editar
-                          </Button>
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Nombre</TableHead>
+                    <TableHead>Fecha</TableHead>
+                    <TableHead>Hora</TableHead>
+                    <TableHead>Valor Hora</TableHead>
+                    <TableHead>Min. Tarde</TableHead>
+                    <TableHead>Descuento</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {filteredData.map((record) => (
+                    <TableRow key={record.id}>
+                      <TableCell className="font-medium">{record.nombre}</TableCell>
+                      <TableCell>{record.fecha}</TableCell>
+                      <TableCell>{record.tiempo}</TableCell>
+                      <TableCell>${record.valorHora.toLocaleString()}</TableCell>
+                      <TableCell>
+                        <span className={`px-2 py-1 rounded-full text-xs ${
+                          record.tiempoTarde > 0 
+                            ? "bg-red-100 text-red-800" 
+                            : "bg-green-100 text-green-800"
+                        }`}>
+                          {record.tiempoTarde} min
+                        </span>
+                      </TableCell>
+                      <TableCell className="font-bold text-red-600">
+                        ${record.descuento.toLocaleString()}
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
             )}
           </CardContent>
         </Card>

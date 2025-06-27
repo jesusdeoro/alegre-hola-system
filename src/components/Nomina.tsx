@@ -2,90 +2,38 @@
 import { useState, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Calculator, DollarSign, Plus, Send } from "lucide-react";
+import { Calculator, FileText, Upload, Download, Users, DollarSign, Clock, BarChart3, Settings, Database, FileCheck, Zap, Target, Award, TrendingUp } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 
 const Nomina = ({ employees, onBack }) => {
-  const [nominaData, setNominaData] = useState([]);
-  const [selectedEmployee, setSelectedEmployee] = useState("");
-  const [bonificacion, setBonificacion] = useState("");
-  const [concepto, setConcepto] = useState("");
-  const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const [activeModule, setActiveModule] = useState("");
   const { toast } = useToast();
 
-  // Cargar datos de nómina desde localStorage
-  useEffect(() => {
-    const savedNomina = localStorage.getItem('nomina');
-    if (savedNomina) {
-      setNominaData(JSON.parse(savedNomina));
-    }
-  }, []);
-
-  // Guardar datos de nómina en localStorage
-  useEffect(() => {
-    localStorage.setItem('nomina', JSON.stringify(nominaData));
-  }, [nominaData]);
-
-  const handleAddBonificacion = () => {
-    if (!selectedEmployee || !bonificacion || !concepto) {
-      toast({
-        title: "Error",
-        description: "Todos los campos son obligatorios",
-        variant: "destructive"
-      });
-      return;
-    }
-
-    const employee = employees.find(emp => emp.id === selectedEmployee);
-    if (!employee) {
-      toast({
-        title: "Error",
-        description: "Empleado no encontrado",
-        variant: "destructive"
-      });
-      return;
-    }
-
-    const newBonificacion = {
-      id: Date.now(),
-      empleadoId: selectedEmployee,
-      empleadoNombre: employee.nombre,
-      empleadoCedula: employee.cedula,
-      concepto: concepto,
-      valor: parseFloat(bonificacion),
-      fecha: new Date().toISOString().split('T')[0],
-      estado: "Pendiente Siigo"
-    };
-
-    setNominaData(prev => [...prev, newBonificacion]);
-    
-    // Limpiar formulario
-    setSelectedEmployee("");
-    setBonificacion("");
-    setConcepto("");
-    setIsDialogOpen(false);
-
+  const handleModuleClick = (moduleName) => {
+    setActiveModule(moduleName);
     toast({
-      title: "Bonificación agregada",
-      description: `Bonificación de $${bonificacion} agregada para ${employee.nombre}`,
+      title: `Módulo ${moduleName}`,
+      description: "Esta funcionalidad estará disponible próximamente",
     });
   };
 
-  const handleSendToSiigo = (item) => {
-    // Aquí iría la integración con Siigo
-    toast({
-      title: "Función en desarrollo",
-      description: "La integración con Siigo estará disponible cuando configures el backend",
-      variant: "destructive"
-    });
-  };
-
-  const totalBonificaciones = nominaData.reduce((total, item) => total + item.valor, 0);
+  const nominaModules = [
+    { id: "liquidacion", name: "Liquidación de Nómina", icon: Calculator, color: "bg-blue-500 hover:bg-blue-600" },
+    { id: "prestaciones", name: "Prestaciones Sociales", icon: FileText, color: "bg-green-500 hover:bg-green-600" },
+    { id: "vacaciones", name: "Vacaciones", icon: Users, color: "bg-purple-500 hover:bg-purple-600" },
+    { id: "bonificaciones", name: "Bonificaciones", icon: Award, color: "bg-yellow-500 hover:bg-yellow-600" },
+    { id: "descuentos", name: "Descuentos", icon: TrendingDown, color: "bg-red-500 hover:bg-red-600" },
+    { id: "horas-extra", name: "Horas Extra", icon: Clock, color: "bg-indigo-500 hover:bg-indigo-600" },
+    { id: "incapacidades", name: "Incapacidades EPS", icon: FileCheck, color: "bg-teal-500 hover:bg-teal-600" },
+    { id: "cesantias", name: "Cesantías", icon: DollarSign, color: "bg-orange-500 hover:bg-orange-600" },
+    { id: "prima", name: "Prima de Servicios", icon: Target, color: "bg-pink-500 hover:bg-pink-600" },
+    { id: "parafiscales", name: "Aportes Parafiscales", icon: BarChart3, color: "bg-gray-500 hover:bg-gray-600" },
+    { id: "seguridad-social", name: "Seguridad Social", icon: Settings, color: "bg-cyan-500 hover:bg-cyan-600" },
+    { id: "reportes", name: "Reportes PILA", icon: Database, color: "bg-lime-500 hover:bg-lime-600" },
+    { id: "siigo-sync", name: "Sincronización Siigo", icon: Zap, color: "bg-violet-500 hover:bg-violet-600" },
+    { id: "backup", name: "Respaldo de Datos", icon: Upload, color: "bg-emerald-500 hover:bg-emerald-600" },
+    { id: "exportar", name: "Exportar Nómina", icon: Download, color: "bg-rose-500 hover:bg-rose-600" }
+  ];
 
   return (
     <div className="min-h-screen bg-gray-50 p-6">
@@ -96,166 +44,135 @@ const Nomina = ({ employees, onBack }) => {
           </Button>
           <h1 className="text-3xl font-bold text-gray-800 flex items-center">
             <Calculator className="mr-3 h-8 w-8" />
-            Gestión de Nómina
+            Sistema de Nómina
           </h1>
         </div>
 
-        {/* Estadísticas */}
-        <div className="grid md:grid-cols-3 gap-4 mb-6">
+        {/* Estadísticas generales */}
+        <div className="grid md:grid-cols-4 gap-4 mb-6">
           <Card>
             <CardContent className="p-6 text-center">
-              <DollarSign className="mx-auto h-8 w-8 text-green-600 mb-2" />
+              <div className="text-2xl font-bold text-blue-600">{employees.length}</div>
+              <div className="text-sm text-gray-600">Empleados Activos</div>
+            </CardContent>
+          </Card>
+          
+          <Card>
+            <CardContent className="p-6 text-center">
               <div className="text-2xl font-bold text-green-600">
-                ${totalBonificaciones.toLocaleString()}
+                ${(employees.reduce((total, emp) => total + (emp.salario || 0), 0)).toLocaleString()}
               </div>
-              <div className="text-sm text-gray-600">Total Bonificaciones</div>
+              <div className="text-sm text-gray-600">Nómina Total Mensual</div>
             </CardContent>
           </Card>
           
           <Card>
             <CardContent className="p-6 text-center">
-              <div className="text-2xl font-bold text-blue-600">{nominaData.length}</div>
-              <div className="text-sm text-gray-600">Registros de Nómina</div>
+              <div className="text-2xl font-bold text-yellow-600">15</div>
+              <div className="text-sm text-gray-600">Módulos Disponibles</div>
             </CardContent>
           </Card>
           
           <Card>
             <CardContent className="p-6 text-center">
-              <div className="text-2xl font-bold text-yellow-600">
-                {nominaData.filter(item => item.estado === "Pendiente Siigo").length}
+              <div className="text-2xl font-bold text-purple-600">
+                {new Date().toLocaleDateString('es-CO', { month: 'long', year: 'numeric' })}
               </div>
-              <div className="text-sm text-gray-600">Pendientes Siigo</div>
+              <div className="text-sm text-gray-600">Período Actual</div>
             </CardContent>
           </Card>
         </div>
 
-        {/* Tabla de nómina */}
+        {/* Módulos de nómina */}
         <Card>
-          <CardHeader className="flex flex-row items-center justify-between">
-            <CardTitle>Registros de Nómina</CardTitle>
-            <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-              <DialogTrigger asChild>
-                <Button>
-                  <Plus className="mr-2 h-4 w-4" />
-                  Agregar Bonificación
-                </Button>
-              </DialogTrigger>
-              <DialogContent>
-                <DialogHeader>
-                  <DialogTitle>Agregar Bonificación</DialogTitle>
-                </DialogHeader>
-                <div className="space-y-4">
-                  <div>
-                    <Label htmlFor="employee">Empleado</Label>
-                    <Select value={selectedEmployee} onValueChange={setSelectedEmployee}>
-                      <SelectTrigger>
-                        <SelectValue placeholder="Seleccionar empleado" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {employees.map((employee) => (
-                          <SelectItem key={employee.id} value={employee.id}>
-                            {employee.nombre} - {employee.cedula}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
-                  
-                  <div>
-                    <Label htmlFor="concepto">Concepto</Label>
-                    <Input
-                      id="concepto"
-                      value={concepto}
-                      onChange={(e) => setConcepto(e.target.value)}
-                      placeholder="Ej: Bonificación por desempeño"
-                    />
-                  </div>
-                  
-                  <div>
-                    <Label htmlFor="bonificacion">Valor ($)</Label>
-                    <Input
-                      id="bonificacion"
-                      type="number"
-                      value={bonificacion}
-                      onChange={(e) => setBonificacion(e.target.value)}
-                      placeholder="30000"
-                    />
-                  </div>
-                  
-                  <Button onClick={handleAddBonificacion} className="w-full">
-                    Agregar Bonificación
-                  </Button>
-                </div>
-              </DialogContent>
-            </Dialog>
+          <CardHeader>
+            <CardTitle>Módulos del Sistema de Nómina</CardTitle>
           </CardHeader>
           <CardContent>
-            {nominaData.length === 0 ? (
-              <div className="text-center py-8 text-gray-500">
-                <Calculator className="h-12 w-12 mx-auto mb-4 opacity-50" />
-                <p>No hay registros de nómina</p>
-              </div>
-            ) : (
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Empleado</TableHead>
-                    <TableHead>Cédula</TableHead>
-                    <TableHead>Concepto</TableHead>
-                    <TableHead>Valor</TableHead>
-                    <TableHead>Fecha</TableHead>
-                    <TableHead>Estado</TableHead>
-                    <TableHead>Acciones</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {nominaData.map((item) => (
-                    <TableRow key={item.id}>
-                      <TableCell className="font-medium">{item.empleadoNombre}</TableCell>
-                      <TableCell>{item.empleadoCedula}</TableCell>
-                      <TableCell>{item.concepto}</TableCell>
-                      <TableCell>${item.valor.toLocaleString()}</TableCell>
-                      <TableCell>{item.fecha}</TableCell>
-                      <TableCell>
-                        <span className={`px-2 py-1 rounded-full text-xs ${
-                          item.estado === "Pendiente Siigo" 
-                            ? "bg-yellow-100 text-yellow-800" 
-                            : "bg-green-100 text-green-800"
-                        }`}>
-                          {item.estado}
-                        </span>
-                      </TableCell>
-                      <TableCell>
-                        <Button
-                          size="sm"
-                          onClick={() => handleSendToSiigo(item)}
-                          disabled={item.estado === "Enviado a Siigo"}
-                        >
-                          <Send className="h-4 w-4 mr-1" />
-                          Enviar a Siigo
-                        </Button>
-                      </TableCell>
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
-            )}
+            <div className="grid md:grid-cols-3 lg:grid-cols-5 gap-4">
+              {nominaModules.map((module) => {
+                const IconComponent = module.icon;
+                return (
+                  <Button
+                    key={module.id}
+                    onClick={() => handleModuleClick(module.name)}
+                    className={`${module.color} text-white h-24 flex flex-col items-center justify-center space-y-2 hover:scale-105 transition-transform`}
+                  >
+                    <IconComponent className="h-6 w-6" />
+                    <span className="text-xs text-center font-medium">
+                      {module.name}
+                    </span>
+                  </Button>
+                );
+              })}
+            </div>
           </CardContent>
         </Card>
 
-        {/* Ejemplo específico para Karilin */}
+        {/* Información del período actual */}
         <Card className="mt-6">
           <CardHeader>
-            <CardTitle>Ejemplo: Bonificación para KARILIN CALAO</CardTitle>
+            <CardTitle>Información del Período Actual</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="grid md:grid-cols-2 gap-6">
+              <div className="space-y-4">
+                <h3 className="font-semibold text-lg">Fechas Importantes</h3>
+                <div className="space-y-2 text-sm">
+                  <div className="flex justify-between">
+                    <span>Corte de nómina:</span>
+                    <span className="font-medium">30 de cada mes</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span>Pago de salarios:</span>
+                    <span className="font-medium">5 del mes siguiente</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span>Reporte PILA:</span>
+                    <span className="font-medium">10 del mes siguiente</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span>Declaración parafiscales:</span>
+                    <span className="font-medium">15 del mes siguiente</span>
+                  </div>
+                </div>
+              </div>
+              
+              <div className="space-y-4">
+                <h3 className="font-semibold text-lg">Estado del Sistema</h3>
+                <div className="space-y-2">
+                  <div className="flex items-center space-x-2">
+                    <div className="w-3 h-3 bg-green-500 rounded-full"></div>
+                    <span className="text-sm">Base de datos: Conectada</span>
+                  </div>
+                  <div className="flex items-center space-x-2">
+                    <div className="w-3 h-3 bg-yellow-500 rounded-full"></div>
+                    <span className="text-sm">Siigo API: Pendiente configuración</span>
+                  </div>
+                  <div className="flex items-center space-x-2">
+                    <div className="w-3 h-3 bg-green-500 rounded-full"></div>
+                    <span className="text-sm">Respaldo automático: Activo</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Instrucciones */}
+        <Card className="mt-6">
+          <CardHeader>
+            <CardTitle>Próximos Pasos</CardTitle>
           </CardHeader>
           <CardContent>
             <div className="bg-blue-50 p-4 rounded-lg">
-              <p className="text-sm text-blue-800 mb-2">
-                <strong>Para probar:</strong> Agrega una bonificación de $30,000 para KARILIN CALAO
-              </p>
-              <p className="text-xs text-blue-600">
-                Una vez que configures el backend con XAMPP y MySQL, podrás enviar esta información directamente a Siigo.
-              </p>
+              <h4 className="font-medium text-blue-800 mb-2">Para activar todas las funcionalidades:</h4>
+              <ul className="text-sm text-blue-700 space-y-1">
+                <li>• Configura la conexión con tu base de datos MySQL local</li>
+                <li>• Obtén y configura tu API Key de Siigo</li>
+                <li>• Revisa y valida la información de empleados</li>
+                <li>• Realiza pruebas con datos de prueba</li>
+              </ul>
             </div>
           </CardContent>
         </Card>

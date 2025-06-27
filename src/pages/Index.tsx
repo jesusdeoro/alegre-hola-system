@@ -168,7 +168,10 @@ const Index = () => {
   }
 
   if (activeSection === "huellero") {
-    return <TimeTracking onBack={() => setActiveSection("inicio")} />;
+    return <TimeTracking 
+      employees={employees}
+      onBack={() => setActiveSection("inicio")} 
+    />;
   }
 
   if (activeSection === "certificados") {
