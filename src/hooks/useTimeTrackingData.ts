@@ -91,12 +91,26 @@ export const useTimeTrackingData = (employees: any[]) => {
           const salario = empleado?.salario || 1300000;
           const valorHora = salario / 230;
           
-          records.forEach((record, index) => {
+          // Filtrar registros válidos (eliminar duplicados muy cercanos)
+          const validRecords = [];
+          for (let i = 0; i < records.length; i++) {
+            const currentRecord = records[i];
+            const nextRecord = records[i + 1];
+            
+            // Si es el último registro o si hay más de 5 minutos de diferencia con el siguiente
+            if (!nextRecord || Math.abs(nextRecord.timeInMinutes - currentRecord.timeInMinutes) > 5) {
+              validRecords.push(currentRecord);
+            }
+          }
+          
+          // Procesar cada registro válido
+          validRecords.forEach((record, index) => {
             const { nombre, fecha, tiempo, timeInMinutes } = record;
             
-            const lateStartRange = 8 * 60 + 5;
-            const lateEndRange = 8 * 60 + 30;
-            const onTimeLimit = 8 * 60;
+            // Verificar llegada tardía (8:05 - 8:30)
+            const lateStartRange = 8 * 60 + 5; // 8:05
+            const lateEndRange = 8 * 60 + 30;   // 8:30
+            const onTimeLimit = 8 * 60;         // 8:00
             
             let isLateArrival = false;
             let latenessMinutes = 0;
@@ -108,24 +122,31 @@ export const useTimeTrackingData = (employees: any[]) => {
               lateDiscount = (latenessMinutes / 60) * valorHora;
             }
             
+            // Verificar violación de almuerzo
             let isLunchViolation = false;
             let lunchExtraMinutes = 0;
             let lunchDiscount = 0;
             let lunchOutTime = '';
             let lunchReturnTime = '';
             
-            if (timeInMinutes >= 12 * 60) {
-              const nextRecord = records[index + 1];
-              if (nextRecord && nextRecord.timeInMinutes > timeInMinutes) {
-                const lunchDuration = nextRecord.timeInMinutes - timeInMinutes;
-                const allowedLunchTime = 60;
+            // Solo considerar salidas a almuerzo entre 12:00 PM y 13:00 PM
+            if (timeInMinutes >= 12 * 60 && timeInMinutes <= 13 * 60) {
+              const nextRecord = validRecords[index + 1];
+              if (nextRecord) {
+                const returnTime = nextRecord.timeInMinutes;
                 
-                if (lunchDuration > allowedLunchTime) {
-                  isLunchViolation = true;
-                  lunchExtraMinutes = lunchDuration - allowedLunchTime;
-                  lunchDiscount = (lunchExtraMinutes / 60) * valorHora;
-                  lunchOutTime = tiempo;
-                  lunchReturnTime = nextRecord.tiempo;
+                // Ignorar retornos después de las 17:30 (probablemente marca de salida)
+                if (returnTime < 17 * 60 + 30) {
+                  const lunchDuration = returnTime - timeInMinutes;
+                  const allowedLunchTime = 60; // 1 hora
+                  
+                  if (lunchDuration > allowedLunchTime) {
+                    isLunchViolation = true;
+                    lunchExtraMinutes = lunchDuration - allowedLunchTime;
+                    lunchDiscount = (lunchExtraMinutes / 60) * valorHora;
+                    lunchOutTime = tiempo;
+                    lunchReturnTime = nextRecord.tiempo;
+                  }
                 }
               }
             }
@@ -150,14 +171,17 @@ export const useTimeTrackingData = (employees: any[]) => {
               type: isLateArrival ? 'late' : (isLunchViolation ? 'lunch' : 'normal')
             };
             
-            processedData.push(processedRecord);
-            
-            if (isLateArrival) {
-              lateEmployees.push(processedRecord);
-            }
-            
-            if (isLunchViolation) {
-              lunchViolators.push(processedRecord);
+            // Solo agregar registros con violaciones o el primer registro del día
+            if (isLateArrival || isLunchViolation || index === 0) {
+              processedData.push(processedRecord);
+              
+              if (isLateArrival) {
+                lateEmployees.push(processedRecord);
+              }
+              
+              if (isLunchViolation) {
+                lunchViolators.push(processedRecord);
+              }
             }
           });
         });
@@ -201,7 +225,7 @@ export const useTimeTrackingData = (employees: any[]) => {
     
     const filtered = attendanceData.filter(record => {
       const [day, month, year] = record.fecha.split('/');
-      const recordDate = new Date(year, month - 1, day);
+      const recordDate = new Date(parseInt(year), parseInt(month) - 1, parseInt(day));
       return recordDate >= start && recordDate <= end;
     });
 
