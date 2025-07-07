@@ -1,8 +1,7 @@
-
 import { useState, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Calculator, FileText, Upload, Download, Users, DollarSign, Clock, BarChart3, Settings, Database, FileCheck, Zap, Target, Award, TrendingUp } from "lucide-react";
+import { Calculator, FileText, Upload, Download, Users, DollarSign, Clock, BarChart3, Settings, Database, FileCheck, Zap, Target, Award, TrendingDown } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 
 const Nomina = ({ employees, onBack }) => {
