@@ -30,16 +30,20 @@ const TimeTracking = ({ onBack, employees }) => {
     reader.onload = (e) => {
       try {
         const text = e.target.result as string;
-        const lines = text.split('\n');
-        const headers = lines[0].split('\t');
+        const lines = text.split('\n').filter(line => line.trim() !== '');
+        
+        // Detectar el separador (tab o punto y coma)
+        const separator = lines[0].includes('\t') ? '\t' : ';';
+        const headers = lines[0].split(separator);
         
         console.log("Headers encontrados:", headers);
+        console.log("Separador detectado:", separator === '\t' ? 'TAB' : 'PUNTO Y COMA');
         
         const processedData = [];
         const lateEmployees = [];
         
         for (let i = 1; i < lines.length; i++) {
-          const row = lines[i].split('\t');
+          const row = lines[i].split(separator);
           if (row.length >= 5) {
             const empleadoNombre = row[1]?.trim(); // Nombres
             const fecha = row[3]?.trim(); // Comprobar Fecha
@@ -52,11 +56,11 @@ const TimeTracking = ({ onBack, employees }) => {
               
               if (!isNaN(hours) && !isNaN(minutes)) {
                 const timeInMinutes = hours * 60 + minutes;
-                const startRange = 7 * 60 + 45; // 7:45
-                const endRange = 10 * 60; // 10:00
-                const onTimeLimit = 8 * 60; // 8:00 - hora de entrada
+                const startRange = 7 * 60 + 50; // 7:50 AM
+                const endRange = 9 * 60; // 9:00 AM
+                const onTimeLimit = 8 * 60; // 8:00 AM - hora límite para no llegar tarde
                 
-                // Solo procesar registros entre 7:45 y 10:00
+                // Solo procesar registros entre 7:50 y 9:00
                 if (timeInMinutes >= startRange && timeInMinutes <= endRange) {
                   // Calcular llegada tardía (después de 8:00)
                   const latenessMinutes = Math.max(0, timeInMinutes - onTimeLimit);
@@ -132,7 +136,9 @@ const TimeTracking = ({ onBack, employees }) => {
     const endDate = new Date(dateFilter.endDate);
     
     const filtered = attendanceData.filter(record => {
-      const recordDate = new Date(record.fecha);
+      // Convertir la fecha del registro al formato correcto
+      const [day, month, year] = record.fecha.split('/');
+      const recordDate = new Date(year, month - 1, day);
       return recordDate >= startDate && recordDate <= endDate;
     });
 
@@ -164,7 +170,7 @@ const TimeTracking = ({ onBack, employees }) => {
     const csvContent = [
       headers.join(","),
       ...filteredData.map(row => [
-        row.nombre,
+        `"${row.nombre}"`,
         row.fecha,
         row.tiempo,
         row.valorHora.toFixed(0),
@@ -258,7 +264,7 @@ const TimeTracking = ({ onBack, employees }) => {
         {/* Carga de archivo y filtros */}
         <Card className="mb-6">
           <CardHeader>
-            <CardTitle>Procesar Datos del Huellero</CardTitle>
+            <CardTitle>Procesar Datos del Huellero (7:50 AM - 9:00 AM)</CardTitle>
           </CardHeader>
           <CardContent>
             <div className="grid md:grid-cols-2 gap-6">
@@ -277,7 +283,10 @@ const TimeTracking = ({ onBack, employees }) => {
                     <p className="text-sm text-blue-600 mt-2">Procesando archivo...</p>
                   )}
                   <p className="text-xs text-gray-500 mt-1">
-                    Formato esperado: ID Empleado | Nombres | Departamento | Fecha | Tiempo...
+                    Formato esperado: ID Empleado | Nombres | Departamento | Comprobar Fecha | Comprobar Tiempo...
+                  </p>
+                  <p className="text-xs text-gray-400 mt-1">
+                    Rango de análisis: 7:50 AM - 9:00 AM (Tarde después de 8:00 AM)
                   </p>
                 </div>
               </div>
@@ -311,7 +320,7 @@ const TimeTracking = ({ onBack, employees }) => {
                   </Button>
                   <Button onClick={handleExportToExcel} disabled={filteredData.length === 0}>
                     <Download className="mr-2 h-4 w-4" />
-                    Exportar
+                    Exportar Excel
                   </Button>
                 </div>
               </div>
@@ -322,7 +331,7 @@ const TimeTracking = ({ onBack, employees }) => {
         {/* Tabla de datos procesados */}
         <Card>
           <CardHeader>
-            <CardTitle>Reporte de Asistencia (7:45 AM - 10:00 AM)</CardTitle>
+            <CardTitle>Reporte de Asistencia - Llegadas Tardías después de 8:00 AM</CardTitle>
           </CardHeader>
           <CardContent>
             {filteredData.length === 0 ? (
@@ -330,6 +339,7 @@ const TimeTracking = ({ onBack, employees }) => {
                 <FileSpreadsheet className="h-12 w-12 mx-auto mb-4 opacity-50" />
                 <p>Carga un archivo del huellero para ver los datos</p>
                 <p className="text-sm mt-2">Campos requeridos: Nombres, Comprobar Fecha, Comprobar Tiempo</p>
+                <p className="text-sm text-gray-400">Análisis de 7:50 AM a 9:00 AM</p>
               </div>
             ) : (
               <Table>
