@@ -17,21 +17,20 @@ const Nomina = ({ employees, onBack }) => {
   };
 
   const nominaModules = [
-    { id: "liquidacion", name: "Liquidación de Nómina", icon: Calculator, color: "bg-blue-500 hover:bg-blue-600" },
-    { id: "prestaciones", name: "Prestaciones Sociales", icon: FileText, color: "bg-green-500 hover:bg-green-600" },
-    { id: "vacaciones", name: "Vacaciones", icon: Users, color: "bg-purple-500 hover:bg-purple-600" },
-    { id: "bonificaciones", name: "Bonificaciones", icon: Award, color: "bg-yellow-500 hover:bg-yellow-600" },
-    { id: "descuentos", name: "Descuentos", icon: TrendingDown, color: "bg-red-500 hover:bg-red-600" },
-    { id: "horas-extra", name: "Horas Extra", icon: Clock, color: "bg-indigo-500 hover:bg-indigo-600" },
-    { id: "incapacidades", name: "Incapacidades EPS", icon: FileCheck, color: "bg-teal-500 hover:bg-teal-600" },
-    { id: "cesantias", name: "Cesantías", icon: DollarSign, color: "bg-orange-500 hover:bg-orange-600" },
-    { id: "prima", name: "Prima de Servicios", icon: Target, color: "bg-pink-500 hover:bg-pink-600" },
-    { id: "parafiscales", name: "Aportes Parafiscales", icon: BarChart3, color: "bg-gray-500 hover:bg-gray-600" },
-    { id: "seguridad-social", name: "Seguridad Social", icon: Settings, color: "bg-cyan-500 hover:bg-cyan-600" },
-    { id: "reportes", name: "Reportes PILA", icon: Database, color: "bg-lime-500 hover:bg-lime-600" },
-    { id: "siigo-sync", name: "Sincronización Siigo", icon: Zap, color: "bg-violet-500 hover:bg-violet-600" },
-    { id: "backup", name: "Respaldo de Datos", icon: Upload, color: "bg-emerald-500 hover:bg-emerald-600" },
-    { id: "exportar", name: "Exportar Nómina", icon: Download, color: "bg-rose-500 hover:bg-rose-600" }
+    { id: "bonos-alimentacion", name: "Bonos (Aux de alimentación) cada quincena", icon: Award, color: "bg-green-500 hover:bg-green-600" },
+    { id: "descuento-celular", name: "Descuento Celular (15 cada mes)", icon: DollarSign, color: "bg-red-500 hover:bg-red-600" },
+    { id: "descuento-fecoomeva", name: "Descuento fecoomeva (cada quincena)", icon: TrendingDown, color: "bg-orange-500 hover:bg-orange-600" },
+    { id: "incapacidades", name: "Incapacidades", icon: FileCheck, color: "bg-teal-500 hover:bg-teal-600" },
+    { id: "ingresos-retiros", name: "Ingresos y retiros personal", icon: Users, color: "bg-blue-500 hover:bg-blue-600" },
+    { id: "llegadas-tardes", name: "Llegadas tardes y permisos", icon: Clock, color: "bg-yellow-500 hover:bg-yellow-600" },
+    { id: "prestamo-empleados", name: "Prestamo a empleados", icon: Calculator, color: "bg-purple-500 hover:bg-purple-600" },
+    { id: "libranzas-bancolombia", name: "Libranzas bancolombia", icon: FileText, color: "bg-indigo-500 hover:bg-indigo-600" },
+    { id: "libranzas-comfamiliar", name: "Libranzas comfamiliar", icon: Database, color: "bg-cyan-500 hover:bg-cyan-600" },
+    { id: "plan-exequial", name: "Plan exequial recordar (cada 15 de cada mes)", icon: Settings, color: "bg-gray-500 hover:bg-gray-600" },
+    { id: "horas-extras", name: "Horas extras o Bonos", icon: Target, color: "bg-pink-500 hover:bg-pink-600" },
+    { id: "rodamiento-comercial", name: "Rodamiento comercial (30 cada mes)", icon: BarChart3, color: "bg-lime-500 hover:bg-lime-600" },
+    { id: "seguros-bolivar", name: "Seguros bolivar (los 30 de cada mes)", icon: Zap, color: "bg-violet-500 hover:bg-violet-600" },
+    { id: "vacaciones", name: "Vacaciones", icon: Upload, color: "bg-emerald-500 hover:bg-emerald-600" }
   ];
 
   return (
@@ -67,8 +66,8 @@ const Nomina = ({ employees, onBack }) => {
           
           <Card>
             <CardContent className="p-6 text-center">
-              <div className="text-2xl font-bold text-yellow-600">15</div>
-              <div className="text-sm text-gray-600">Módulos Disponibles</div>
+               <div className="text-2xl font-bold text-yellow-600">14</div>
+               <div className="text-sm text-gray-600">Módulos Disponibles</div>
             </CardContent>
           </Card>
           
